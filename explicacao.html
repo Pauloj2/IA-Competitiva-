@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Isolation IA — Explicação Simples</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-page:   #0f1117;
+      --bg-card:   #1a1d27;
+      --bg-card2:  #20243a;
+      --border:    #2e3250;
+      --text:      #e2e4f0;
+      --text-muted:#8890b0;
+      --accent:    #6c8fff;
+      --accent2:   #a78bfa;
+      --green:     #34d399;
+      --gold:      #fbbf24;
+      --red:       #f87171;
+      --radius:    12px;
+      --font-code: 'Courier New', monospace;
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg-page);
+      color: var(--text);
+      line-height: 1.7;
+      font-size: 16px;
+    }
+
+    .page-wrapper { max-width: 960px; margin: 0 auto; padding: 0 24px 80px; }
+
+    /* ── HERO ── */
+    .hero {
+      text-align: center;
+      padding: 52px 24px 44px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 48px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(ellipse at 20% 50%, rgba(108,143,255,0.08) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 50%, rgba(167,139,250,0.08) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    .hero .badge {
+      display: inline-block;
+      background: rgba(108,143,255,0.15);
+      color: var(--accent);
+      border: 1px solid rgba(108,143,255,0.3);
+      border-radius: 999px;
+      padding: 4px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+    .hero h1 {
+      font-size: clamp(26px, 4vw, 42px);
+      font-weight: 800;
+      background: linear-gradient(135deg, #e2e4f0 0%, var(--accent) 55%, var(--accent2) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      margin-bottom: 12px;
+    }
+    .hero p { color: var(--text-muted); font-size: 17px; max-width: 600px; margin: 0 auto; }
+
+    /* ── SEÇÕES ── */
+    section { margin-bottom: 72px; scroll-margin-top: 24px; }
+    .section-header { display: flex; align-items: center; gap: 14px; margin-bottom: 28px; }
+    .section-icon {
+      width: 42px; height: 42px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; flex-shrink: 0;
+    }
+    .section-header h2 { font-size: 24px; font-weight: 700; }
+
+    p { color: var(--text-muted); margin-bottom: 16px; }
+    p:last-child { margin-bottom: 0; }
+    strong { color: var(--text); }
+
+    /* ── CARDS ── */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+    }
+    .card-grid { display: grid; gap: 16px; }
+    .card-grid.col2 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+    .card-grid.col3 { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+
+    /* ── INFO BOXES ── */
+    .info-box {
+      background: rgba(108,143,255,0.07);
+      border-left: 3px solid var(--accent);
+      border-radius: 0 8px 8px 0;
+      padding: 14px 18px; margin: 16px 0;
+      font-size: 15px; color: var(--text-muted);
+    }
+    .info-box strong { color: var(--accent); }
+    .good-box {
+      background: rgba(52,211,153,0.07);
+      border-left: 3px solid var(--green);
+      border-radius: 0 8px 8px 0;
+      padding: 14px 18px; margin: 16px 0;
+      font-size: 15px; color: var(--text-muted);
+    }
+    .good-box strong { color: var(--green); }
+    .warn-box {
+      background: rgba(248,113,113,0.07);
+      border-left: 3px solid var(--red);
+      border-radius: 0 8px 8px 0;
+      padding: 14px 18px; margin: 16px 0;
+      font-size: 15px; color: var(--text-muted);
+    }
+    .warn-box strong { color: var(--red); }
+
+    /* ── ANALOGIA CRIANÇA ── */
+    .analogia {
+      background: linear-gradient(135deg, rgba(108,143,255,0.08), rgba(167,139,250,0.08));
+      border: 1px solid rgba(108,143,255,0.25);
+      border-radius: var(--radius);
+      padding: 24px 28px;
+      margin: 24px 0;
+      position: relative;
+    }
+    .analogia-label {
+      font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+      color: var(--accent); margin-bottom: 10px; font-weight: 700;
+    }
+    .analogia-texto {
+      font-size: 17px; color: var(--text); line-height: 1.7;
+    }
+    .analogia-emoji { font-size: 32px; float: right; margin-left: 16px; }
+
+    /* ── EXEMPLO DE JOGO ── */
+    .exemplo {
+      background: var(--bg-card2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin: 24px 0;
+    }
+    .exemplo-label {
+      font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+      color: var(--gold); margin-bottom: 14px; font-weight: 700;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .exemplo-label::before {
+      content: '';
+      display: inline-block; width: 8px; height: 8px;
+      border-radius: 50%; background: var(--gold);
+      box-shadow: 0 0 8px var(--gold);
+    }
+
+    /* ── TABULEIRO ── */
+    .board-mini {
+      display: grid;
+      grid-template-columns: repeat(7, 36px);
+      grid-template-rows: repeat(7, 36px);
+      gap: 3px;
+      margin: 12px 0;
+    }
+    .bm {
+      width: 36px; height: 36px; border-radius: 4px;
+      background: rgba(100,180,60,0.1);
+      border: 1px solid rgba(100,180,60,0.15);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700;
+    }
+    .bm.p1  { background: rgba(108,143,255,0.25); border-color: var(--accent); color: var(--accent); }
+    .bm.p2  { background: rgba(248,113,113,0.25); border-color: var(--red); color: var(--red); }
+    .bm.blk { background: #1a1d27; border-color: #2e3250; }
+    .bm.mv  { background: rgba(52,211,153,0.12); border-color: rgba(52,211,153,0.35); color: rgba(52,211,153,0.7); font-size:9px; }
+    .bm.hl  { background: rgba(251,191,36,0.15); border-color: var(--gold); }
+
+    /* ── CÓDIGO COM EXPLICAÇÃO LINHA A LINHA ── */
+    .code-explain {
+      background: #111318;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin: 24px 0;
+    }
+    .code-explain-header {
+      background: var(--bg-card2);
+      padding: 10px 18px;
+      font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+    }
+    .code-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      border-bottom: 1px solid rgba(46,50,80,0.5);
+    }
+    .code-row:last-child { border-bottom: none; }
+    .code-row:hover { background: rgba(108,143,255,0.04); }
+    .code-left {
+      padding: 10px 18px;
+      font-family: var(--font-code);
+      font-size: 13px;
+      border-right: 1px solid var(--border);
+      white-space: pre;
+      color: var(--text);
+    }
+    .code-right {
+      padding: 10px 18px;
+      font-size: 13px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+    }
+    .code-row.destaque .code-left  { background: rgba(108,143,255,0.08); border-left: 3px solid var(--accent); }
+    .code-row.destaque .code-right { background: rgba(108,143,255,0.04); }
+    .code-row.prune   .code-left  { background: rgba(248,113,113,0.1);  border-left: 3px solid var(--red); }
+    .code-row.prune   .code-right { background: rgba(248,113,113,0.04); }
+    .code-row.verde   .code-left  { background: rgba(52,211,153,0.08);  border-left: 3px solid var(--green); }
+    .code-row.verde   .code-right { background: rgba(52,211,153,0.04); }
+    .code-row.gold    .code-left  { background: rgba(251,191,36,0.08);  border-left: 3px solid var(--gold); }
+    .code-row.gold    .code-right { background: rgba(251,191,36,0.04); }
+    .code-row.sep .code-left { background: var(--bg-card2); color: var(--text-muted); font-style: italic; }
+    .code-row.sep .code-right { background: var(--bg-card2); }
+
+    /* ── SINTAXE INLINE ── */
+    .kw  { color: #a78bfa; font-weight: 700; }
+    .fn  { color: #6c8fff; }
+    .st  { color: #fbbf24; }
+    .nm  { color: #34d399; }
+    .cm  { color: #4a5570; font-style: italic; }
+
+    code {
+      font-family: var(--font-code);
+      background: rgba(255,255,255,0.07);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 13px;
+      color: var(--accent);
+    }
+
+    .tag {
+      display: inline-block; padding: 2px 10px;
+      border-radius: 999px; font-size: 12px; font-weight: 700;
+    }
+    .tag.azul    { background: rgba(108,143,255,0.12); color: var(--accent);  border: 1px solid rgba(108,143,255,0.3); }
+    .tag.verde   { background: rgba(52,211,153,0.12);  color: var(--green);   border: 1px solid rgba(52,211,153,0.3); }
+    .tag.vermelho{ background: rgba(248,113,113,0.12); color: var(--red);     border: 1px solid rgba(248,113,113,0.3); }
+    .tag.amarelo { background: rgba(251,191,36,0.12);  color: var(--gold);    border: 1px solid rgba(251,191,36,0.3); }
+
+    .mt8  { margin-top: 8px; }
+    .mt16 { margin-top: 16px; }
+    .mt24 { margin-top: 24px; }
+    .flex { display: flex; }
+    .gap-24 { gap: 24px; }
+    .flex-wrap { flex-wrap: wrap; }
+
+    /* ── PASSO A PASSO ── */
+    .passo {
+      display: flex; gap: 16px; align-items: flex-start;
+      margin-bottom: 16px;
+    }
+    .passo-num {
+      width: 30px; height: 30px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 800; color: #fff;
+      flex-shrink: 0; margin-top: 2px;
+    }
+    .passo-texto { font-size: 15px; color: var(--text-muted); }
+    .passo-texto strong { color: var(--text); }
+
+    /* ── COMPARAÇÃO ── */
+    .compare-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .compare-table th { background: var(--bg-card2); padding: 10px 16px; text-align: left; color: var(--text-muted); font-size: 12px; border-bottom: 1px solid var(--border); }
+    .compare-table td { padding: 10px 16px; border-bottom: 1px solid var(--border); color: var(--text-muted); }
+    .compare-table tr:last-child td { border-bottom: none; }
+    .compare-table td:first-child { color: var(--text); font-weight: 600; }
+    .compare-table td.bom { color: var(--green); font-weight: 700; }
+    .compare-table td.mau { color: var(--red); }
+
+    footer { border-top: 1px solid var(--border); padding: 28px 24px; text-align: center; color: var(--text-muted); font-size: 13px; }
+    footer strong { color: var(--text); }
+  </style>
+</head>
+<body>
+<div class="page-wrapper">
+
+<!-- HERO -->
+<header class="hero">
+  <div class="badge">Isolation IA — Guia de Estudo</div>
+  <h1>Como a IA pensa no Isolation</h1>
+  <p>Explicação simples dos três algoritmos que fazem a IA jogar — com exemplos reais do tabuleiro.</p>
+</header>
+
+<!-- ═══════════════════════════════════════
+     MINIMAX
+════════════════════════════════════════ -->
+<section id="minimax">
+  <div class="section-header">
+    <div class="section-icon">🧠</div>
+    <h2>Minimax — A IA que pensa na frente</h2>
+  </div>
+
+  <div class="analogia">
+    <div class="analogia-emoji">🎮</div>
+    <div class="analogia-label">Explicação simples</div>
+    <div class="analogia-texto">
+      Imagine que você está jogando pedra-papel-tesoura e pode ver o futuro. Você pensa:
+      <em>"Se eu fizer pedra, meu adversário vai fazer papel e eu perco. Se eu fizer tesoura, ele faz pedra e eu perco de novo. Então eu faço papel — e mesmo que ele tente me vencer, o melhor que ele consegue é empatar."</em>
+      <br><br>
+      O Minimax faz exatamente isso: a IA imagina todas as jogadas possíveis, imagina que o oponente vai sempre tentar <strong>prejudicá-la ao máximo</strong>, e escolhe o caminho que garante o <strong>melhor resultado possível mesmo no pior caso</strong>.
+    </div>
+  </div>
+
+  <div class="exemplo">
+    <div class="exemplo-label">Exemplo real no Isolation — turno da IA (peça A)</div>
+    <div class="flex gap-24 flex-wrap mt16">
+      <div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Estado atual do tabuleiro</div>
+        <div class="board-mini">
+          <!-- linha 0 -->
+          <div class="bm"></div><div class="bm"></div><div class="bm blk"></div><div class="bm"></div><div class="bm"></div><div class="bm"></div><div class="bm"></div>
+          <!-- linha 1 -->
+          <div class="bm"></div><div class="bm mv">●</div><div class="bm mv">●</div><div class="bm mv">●</div><div class="bm blk"></div><div class="bm"></div><div class="bm"></div>
+          <!-- linha 2 -->
+          <div class="bm"></div><div class="bm mv">●</div><div class="bm p1">A</div><div class="bm blk"></div><div class="bm"></div><div class="bm"></div><div class="bm"></div>
+          <!-- linha 3 -->
+          <div class="bm"></div><div class="bm mv">●</div><div class="bm blk"></div><div class="bm mv">●</div><div class="bm"></div><div class="bm"></div><div class="bm"></div>
+          <!-- linha 4 -->
+          <div class="bm"></div><div class="bm"></div><div class="bm blk"></div><div class="bm"></div><div class="bm"></div><div class="bm"></div><div class="bm"></div>
+          <!-- linha 5 -->
+          <div class="bm"></div><div class="bm"></div><div class="bm"></div><div class="bm p2">B</div><div class="bm"></div><div class="bm blk"></div><div class="bm"></div>
+          <!-- linha 6 -->
+          <div class="bm"></div><div class="bm blk"></div><div class="bm"></div><div class="bm"></div><div class="bm"></div><div class="bm"></div><div class="bm"></div>
+        </div>
+        <p style="font-size:11px;color:var(--text-muted);margin-top:6px;text-align:center;">
+          <span style="color:var(--accent)">A</span> = IA (MAX) &nbsp;|&nbsp;
+          <span style="color:var(--red)">B</span> = Oponente (MIN) &nbsp;|&nbsp;
+          <span style="color:var(--green)">●</span> = movimentos disponíveis de A
+        </p>
+      </div>
+      <div style="flex:1;min-width:260px;">
+        <p><strong>A IA está em (2,2) e tem 6 movimentos possíveis.</strong> O Minimax vai simular cada um deles e perguntar: <em>"Se eu for para lá, o que o oponente vai fazer? E aí o que eu posso fazer?"</em></p>
+
+        <div class="passo mt16">
+          <div class="passo-num">1</div>
+          <div class="passo-texto"><strong>A IA vai para (1,1)</strong> — bloqueando (5,4).<br>
+          O oponente tem 5 movimentos. A IA fica com 7. Heurística = +2.</div>
+        </div>
+        <div class="passo">
+          <div class="passo-num">2</div>
+          <div class="passo-texto"><strong>A IA vai para (3,3)</strong> — bloqueando (4,4).<br>
+          O oponente fica com 3 movimentos. A IA fica com 6. Heurística = +3.</div>
+        </div>
+        <div class="passo">
+          <div class="passo-num">3</div>
+          <div class="passo-texto"><strong>O Minimax escolhe ir para (3,3)</strong> porque mesmo supondo que o oponente jogue perfeitamente depois, esse caminho garante a maior vantagem mínima.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p>O nome <strong>Minimax</strong> vem de duas palavras: <strong>MIN</strong> (o oponente minimiza a pontuação da IA) e <strong>MAX</strong> (a IA maximiza a própria pontuação). Eles se alternam a cada nível da árvore de busca.</p>
+
+  <!-- CÓDIGO LINHA A LINHA -->
+  <div class="code-explain">
+    <div class="code-explain-header">minimax_agent.py — explicação linha a linha</div>
+
+    <div class="code-row sep">
+      <div class="code-left">class MinimaxAgent:</div>
+      <div class="code-right">Define o agente que usa o algoritmo Minimax.</div>
+    </div>
+
+    <div class="code-row destaque">
+      <div class="code-left">    <span class="kw">def</span> <span class="fn">__init__</span>(self, profundidade_maxima=<span class="nm">3</span>):</div>
+      <div class="code-right">Cria o agente. O número 3 significa: <em>"olha até 3 turnos à frente"</em>. Quanto maior, mais inteligente — mas mais lento.</div>
+    </div>
+
+    <div class="code-row">
+      <div class="code-left">        self.profundidade_maxima = profundidade_maxima</div>
+      <div class="code-right">Guarda até onde a IA vai olhar na árvore de jogadas.</div>
+    </div>
+
+    <div class="code-row">
+      <div class="code-left">        self.INFINITO = <span class="fn">float</span>(<span class="st">'inf'</span>)</div>
+      <div class="code-right">Um número gigante que representa "o pior/melhor resultado imaginável". Usado como valor inicial de comparação.</div>
+    </div>
+
+    <div class="code-row sep">
+      <div class="code-left">    <span class="kw">def</span> <span class="fn">escolher_acao</span>(self, estado_atual):</div>
+      <div class="code-right">A função principal: recebe o tabuleiro atual e devolve a melhor jogada que a IA encontrou.</div>
+    </div>
+
+    <div class="code-row destaque">
+      <div class="code-left">        melhor_acao      = <span class="nm">None</span>
+        melhor_pontuacao = -self.INFINITO</div>
+      <div class="code-right">Começa sem nenhuma escolha e com a pior pontuação possível. A cada jogada analisada, tenta melhorar.</div>
+    </div>
+
+    <div class="code-row">
+      <div class="code-left">        <span class="kw">for</span> acao <span class="kw">in</span> estado_atual.<span class="fn">get_acoes_legais</span>():</div>
+      <div class="code-right">Para cada jogada que a IA pode fazer agora (mover + bloquear), testa uma por uma.</div>
+    </div>
+
+    <div class="code-row">
+      <div class="code-left">            proximo_estado = estado_atual.<span class="fn">aplicar_acao</span>(acao)</div>
+      <div class="code-right">Simula o tabuleiro <em>após</em> essa jogada. Não mexe no tabuleiro real — é só uma cópia mental.</div>
+    </div>
+
+    <div class="code-row destaque">
+      <div class="code-left">            pontuacao = self.<span class="fn">_minimax</span>(proximo_estado,
+                              self.profundidade_maxima - 1,
+                              jogador_esta_maximizando=<span class="nm">False</span>)</div>
+      <div class="code-right">Chama o Minimax recursivo para ver quanto vale esse estado futuro. <code>False</code> = próximo turno é do oponente (MIN).</div>
+    </div>
+
+    <div class="code-row verde">
+      <div class="code-left">            <span class="kw">if</span> pontuacao > melhor_pontuacao:
+                melhor_pontuacao = pontuacao
+                melhor_acao      = acao</div>
+      <div class="code-right">Se essa jogada é melhor do que tudo que viu antes, guarda ela como a nova melhor opção.</div>
+    </div>
+
+    <div class="code-row">
+      <div class="code-left">        <span class="kw">return</span> melhor_acao</div>
+      <div class="code-right">Devolve a melhor jogada encontrada depois de analisar todas as opções.</div>
+    </div>
+
+    <div class="code-row sep">
+      <div class="code-left">    <span class="kw">def</span> <span class="fn">_minimax</span>(self, estado, profundidade,
+                  jogador_esta_maximizando):</div>
+      <div class="code-right">A parte recursiva: avalia estados futuros alternando entre MAX (IA) e MIN (oponente).</div>
+    </div>
+
+    <div class="code-row destaque">
+      <div class="code-left">        <span class="kw">if</span> profundidade == <span class="nm">0</span> <span class="kw">or</span> estado.<span class="fn">jogo_terminou</span>():</div>
+      <div class="code-right"><strong>Caso de parada:</strong> chegou no limite de visão (profundidade 0) ou o jogo acabou. Hora de medir quem está ganhando.</div>
+    </div>
+
+    <div class="code-row gold">
+      <div class="code-left">            <span class="kw">return</span> self.<span class="fn">avaliar</span>(estado)</div>
+      <div class="code-right">Chama a heurística: conta movimentos disponíveis e retorna um número que mostra quão boa é essa posição para a IA.</div>
+    </div>
+
+    <div class="code-row">
+      <div class="code-left">        acoes_possiveis = estado.<span class="fn">get_acoes_legais</span>()</div>
+      <div class="code-right">Lista todas as jogadas possíveis neste estado (para o jogador cujo turno é agora).</div>
+    </div>
+
+    <div class="code-row destaque">
+      <div class="code-left">        <span class="kw">if</span> jogador_esta_maximizando:</div>
+      <div class="code-right">É o turno da IA? Então ela quer o MAIOR valor possível.</div>
+    </div>
+
+    <div class="code-row">
+      <div class="code-left">            melhor_valor = -self.INFINITO
+            <span class="kw">for</span> acao <span class="kw">in</span> acoes_possiveis:
+                estado_filho    = estado.<span class="fn">aplicar_acao</span>(acao)
+                pontuacao_filho = self.<span class="fn">_minimax</span>(estado_filho,
+                                         profundidade-<span class="nm">1</span>, <span class="nm">False</span>)
+                melhor_valor = <span class="fn">max</span>(melhor_valor, pontuacao_filho)
+            <span class="kw">return</span> melhor_valor</div>
+      <div class="code-right">Testa todas as jogadas da IA. Para cada uma, simula o estado resultante e chama o Minimax de novo — agora é a vez do oponente (False). Guarda a maior pontuação encontrada.</div>
+    </div>
+
+    <div class="code-row destaque">
+      <div class="code-left">        <span class="kw">else</span>:</div>
+      <div class="code-right">É o turno do oponente? Ele quer o MENOR valor possível (prejudicar a IA ao máximo).</div>
+    </div>
+
+    <div class="code-row">
+      <div class="code-left">            melhor_valor = self.INFINITO
+            <span class="kw">for</span> acao <span class="kw">in</span> acoes_possiveis:
+                estado_filho    = estado.<span class="fn">aplicar_acao</span>(acao)
+                pontuacao_filho = self.<span class="fn">_minimax</span>(estado_filho,
+                                         profundidade-<span class="nm">1</span>, <span class="nm">True</span>)
+                melhor_valor = <span class="fn">min</span>(melhor_valor, pontuacao_filho)
+            <span class="kw">return</span> melhor_valor</div>
+      <div class="code-right">Testa todas as jogadas do oponente. Para cada uma, o Minimax continua — agora é a vez da IA (True). Guarda a menor pontuação (pior para a IA, melhor para o oponente).</div>
+    </div>
+  </div>
+
+  <div class="info-box">
+    <strong>Por que isso funciona?</strong> Porque a IA sempre assume o pior caso — que o oponente vai jogar perfeitamente. Assim, a IA nunca se surpreende: se o oponente jogar mal, a IA só se sai melhor do que esperava.
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════
+     ALFA-BETA
+════════════════════════════════════════ -->
+<section id="alfabeta">
+  <div class="section-header">
+    <div class="section-icon">✂️</div>
+    <h2>Poda Alfa-Beta — O Minimax que para de perder tempo</h2>
+  </div>
+
+  <div class="analogia">
+    <div class="analogia-emoji">🛒</div>
+    <div class="analogia-label">Explicação simples</div>
+    <div class="analogia-texto">
+      Você quer comprar o tênis mais barato. Já foi na primeira loja e pagaria no máximo R$ 150. Entra na segunda loja, o vendedor mostra o primeiro tênis por R$ 200.
+      <br><br>
+      Você para de olhar o restante da loja. <strong>Não importa o que mais tem ali — nada será mais barato do que o que você já encontrou.</strong> Você sai e vai para a próxima loja.
+      <br><br>
+      O Alfa-Beta faz o mesmo: quando descobre que um caminho da árvore <strong>nunca vai ser melhor do que o que já encontrou</strong>, ele para de explorar esse caminho imediatamente.
+    </div>
+  </div>
+
+  <div class="exemplo">
+    <div class="exemplo-label">Exemplo real no Isolation — quando a poda acontece</div>
+
+    <div class="flex gap-24 flex-wrap mt16">
+      <div style="flex:1;min-width:260px;">
+        <div class="passo">
+          <div class="passo-num">1</div>
+          <div class="passo-texto">
+            <strong>IA explora o ramo esquerdo:</strong> oponente vai para (3,1) e bloqueia (4,4).<br>
+            A IA fica com 6 movimentos, oponente com 4. Heurística = <strong style="color:var(--green)">+2</strong>.<br>
+            → Alpha da IA sobe para <strong>+2</strong>.
+          </div>
+        </div>
+
+        <div class="passo">
+          <div class="passo-num">2</div>
+          <div class="passo-texto">
+            <strong>IA explora o ramo direito:</strong> oponente vai para (4,2) e bloqueia (1,1).<br>
+            A IA fica com 4 movimentos, oponente com 6. Heurística = <strong style="color:var(--red)">−2</strong>.<br>
+            → Beta do oponente cai para <strong>−2</strong>.
+          </div>
+        </div>
+
+        <div class="passo">
+          <div class="passo-num">3</div>
+          <div class="passo-texto">
+            <strong>Beta (−2) ≤ Alpha (+2):</strong> PODA!<br>
+            O oponente nunca escolheria este ramo porque a IA já garantiu +2 em outro caminho. Nem vale explorar os filhos restantes.
+          </div>
+        </div>
+
+        <div class="good-box" style="margin-top:0;">
+          <strong>Resultado:</strong> a IA chegou na mesma decisão do Minimax puro, mas analisou menos da metade dos estados. No Isolation isso significa ir de profundidade 3 para profundidade 5 no mesmo tempo.
+        </div>
+      </div>
+
+      <div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">O que a IA NÃO precisa mais calcular:</div>
+        <div class="board-mini">
+          <!-- linha 0 -->
+          <div class="bm"></div><div class="bm blk"></div><div class="bm"></div><div class="bm blk"></div><div class="bm"></div><div class="bm"></div><div class="bm"></div>
+          <!-- linha 1 -->
+          <div class="bm"></div><div class="bm blk"></div><div class="bm"></div><div class="bm"></div><div class="bm blk"></div><div class="bm"></div><div class="bm"></div>
+          <!-- linha 2 -->
+          <div class="bm"></div><div class="bm"></div><div class="bm p1">A</div><div class="bm blk"></div><div class="bm"></div><div class="bm"></div><div class="bm"></div>
+          <!-- linha 3 -->
+          <div class="bm"></div><div class="bm blk"></div><div class="bm blk"></div><div class="bm"></div><div class="bm p2">B</div><div class="bm"></div><div class="bm"></div>
+          <!-- linha 4 -->
+          <div class="bm"></div><div class="bm"></div><div class="bm"></div><div class="bm blk"></div><div class="bm blk"></div><div class="bm"></div><div class="bm"></div>
+          <!-- linha 5 -->
+          <div class="bm"></div><div class="bm"></div><div class="bm blk"></div><div class="bm"></div><div class="bm"></div><div class="bm blk"></div><div class="bm"></div>
+          <!-- linha 6 -->
+          <div class="bm"></div><div class="bm"></div><div class="bm"></div><div class="bm"></div><div class="bm blk"></div><div class="bm"></div><div class="bm"></div>
+        </div>
+        <div style="background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.3);border-radius:6px;padding:10px 14px;margin-top:8px;font-size:12px;color:var(--red);">
+          ✗ Este estado e todos os filhos dele foram cortados — a IA já sabe que o ramo esquerdo é melhor.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CÓDIGO LINHA A LINHA -->
+  <div class="code-explain">
+    <div class="code-explain-header">alpha_beta_agent.py — explicação linha a linha</div>
+
+    <div class="code-row sep">
+      <div class="code-left">class AlphaBetaAgent:</div>
+      <div class="code-right">Versão melhorada do Minimax que evita explorar caminhos inúteis.</div>
+    </div>
+
+    <div class="code-row sep">
+      <div class="code-left">    <span class="kw">def</span> <span class="fn">escolher_acao</span>(self, estado_atual):</div>
+      <div class="code-right">Função principal: devolve a melhor jogada, igual ao Minimax — mas muito mais rápido.</div>
+    </div>
+
+    <div class="code-row destaque">
+      <div class="code-left">        melhor_acao = <span class="nm">None</span>
+        alfa = -<span class="fn">float</span>(<span class="st">'inf'</span>)</div>
+      <div class="code-right"><strong>Alfa</strong> = a melhor pontuação que a IA já garantiu. Começa em −∞ (ainda não garantiu nada). Vai crescendo à medida que encontra boas jogadas.</div>
+    </div>
+
+    <div class="code-row destaque">
+      <div class="code-left">        beta  =  <span class="fn">float</span>(<span class="st">'inf'</span>)</div>
+      <div class="code-right"><strong>Beta</strong> = a melhor pontuação que o oponente já garantiu. Começa em +∞ (ainda não garantiu nada). Vai diminuindo à medida que o oponente encontra jogadas ruins para a IA.</div>
+    </div>
+
+    <div class="code-row">
+      <div class="code-left">        <span class="kw">for</span> acao <span class="kw">in</span> estado_atual.<span class="fn">get_acoes_legais</span>():
+            proximo_estado = estado_atual.<span class="fn">aplicar_acao</span>(acao)
+            pontuacao = self.<span class="fn">_alfa_beta</span>(proximo_estado,
+                                    self.profundidade_maxima - 1,
+                                    alfa, beta, jogador_e_max=<span class="nm">False</span>)</div>
+      <div class="code-right">Para cada jogada possível, simula o estado resultante e chama o Alfa-Beta recursivo passando os valores atuais de alfa e beta para baixo na árvore.</div>
+    </div>
+
+    <div class="code-row verde">
+      <div class="code-left">            <span class="kw">if</span> pontuacao > alfa:
+                alfa        = pontuacao
+                melhor_acao = acao</div>
+      <div class="code-right">Se essa jogada é melhor do que a melhor que a IA já garantiu, atualiza alfa e guarda essa jogada como a melhor opção.</div>
+    </div>
+
+    <div class="code-row sep">
+      <div class="code-left">    <span class="kw">def</span> <span class="fn">_alfa_beta</span>(self, estado, profundidade,
+                   alfa, beta, jogador_e_max):</div>
+      <div class="code-right">A busca recursiva. Recebe alfa e beta como limites: qualquer valor fora dessa faixa pode ser ignorado.</div>
+    </div>
+
+    <div class="code-row destaque">
+      <div class="code-left">        <span class="kw">if</span> profundidade == <span class="nm">0</span> <span class="kw">or</span> estado.<span class="fn">jogo_terminou</span>():
+            <span class="kw">return</span> self.<span class="fn">avaliar</span>(estado)</div>
+      <div class="code-right">Igual ao Minimax: se chegou no limite de visão ou o jogo acabou, usa a heurística para estimar o valor do estado.</div>
+    </div>
+
+    <div class="code-row sep">
+      <div class="code-left">        <span class="kw">if</span> jogador_e_max:</div>
+      <div class="code-right">É o turno da IA (MAX)? Ela quer o maior valor. A novidade aqui é o uso de alfa para cortar.</div>
+    </div>
+
+    <div class="code-row">
+      <div class="code-left">            melhor_valor = -<span class="fn">float</span>(<span class="st">'inf'</span>)
+            <span class="kw">for</span> acao <span class="kw">in</span> estado.<span class="fn">get_acoes_legais</span>():
+                estado_filho = estado.<span class="fn">aplicar_acao</span>(acao)
+                melhor_valor = <span class="fn">max</span>(melhor_valor,
+                    self.<span class="fn">_alfa_beta</span>(estado_filho, profundidade-<span class="nm">1</span>,
+                                     alfa, beta, <span class="nm">False</span>))
+                alfa = <span class="fn">max</span>(alfa, melhor_valor)</div>
+      <div class="code-right">Explora os filhos e vai guardando o maior valor. Atualiza alfa: agora a IA garante pelo menos esse valor.</div>
+    </div>
+
+    <div class="code-row prune">
+      <div class="code-left">                <span class="kw">if</span> beta &lt;= alfa: <span class="kw">break</span></div>
+      <div class="code-right"><strong>PODA BETA:</strong> o oponente (que está num nível acima) já garantiu um valor ≤ beta. Se beta ≤ alfa, o oponente nunca deixaria a IA chegar aqui — ele já tem uma opção melhor para ele. Inutile continuar.</div>
+    </div>
+
+    <div class="code-row sep">
+      <div class="code-left">        <span class="kw">else</span>:  <span class="cm"># turno do oponente (MIN)</span></div>
+      <div class="code-right">É o turno do oponente (MIN). Ele quer o menor valor. A novidade é o uso de beta para cortar.</div>
+    </div>
+
+    <div class="code-row">
+      <div class="code-left">            melhor_valor = <span class="fn">float</span>(<span class="st">'inf'</span>)
+            <span class="kw">for</span> acao <span class="kw">in</span> estado.<span class="fn">get_acoes_legais</span>():
+                estado_filho = estado.<span class="fn">aplicar_acao</span>(acao)
+                melhor_valor = <span class="fn">min</span>(melhor_valor,
+                    self.<span class="fn">_alfa_beta</span>(estado_filho, profundidade-<span class="nm">1</span>,
+                                     alfa, beta, <span class="nm">True</span>))
+                beta = <span class="fn">min</span>(beta, melhor_valor)</div>
+      <div class="code-right">Explora os filhos e vai guardando o menor valor. Atualiza beta: o oponente agora garante que a IA não vai passar disso.</div>
+    </div>
+
+    <div class="code-row prune">
+      <div class="code-left">                <span class="kw">if</span> beta &lt;= alfa: <span class="kw">break</span></div>
+      <div class="code-right"><strong>PODA ALPHA:</strong> a IA (que está num nível acima) já garantiu alfa. Se beta ≤ alfa, a IA nunca escolheria este caminho — ela já tem algo melhor. Não precisa continuar explorando.</div>
+    </div>
+  </div>
+
+  <div class="card mt24">
+    <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-muted);margin-bottom:16px;">Comparação direta: Minimax vs Alfa-Beta no Isolation</div>
+    <table class="compare-table">
+      <thead><tr><th>Situação</th><th>Minimax</th><th>Alfa-Beta</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Profundidade 3 (início de jogo)</td>
+          <td class="mau">~512 nós</td>
+          <td class="bom">~50 nós</td>
+        </tr>
+        <tr>
+          <td>Profundidade 5 (meio de jogo)</td>
+          <td class="mau">~32.768 nós</td>
+          <td class="bom">~180 nós</td>
+        </tr>
+        <tr>
+          <td>Decisão tomada</td>
+          <td>Igual</td>
+          <td class="bom">Igual (nunca piora)</td>
+        </tr>
+        <tr>
+          <td>Profundidade máxima em 150ms</td>
+          <td class="mau">3</td>
+          <td class="bom">5 ou 6</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════
+     HEURÍSTICA
+════════════════════════════════════════ -->
+<section id="heuristica">
+  <div class="section-header">
+    <div class="section-icon">📊</div>
+    <h2>Função Heurística — Como a IA mede quem está ganhando</h2>
+  </div>
+
+  <div class="analogia">
+    <div class="analogia-emoji">🗺️</div>
+    <div class="analogia-label">Explicação simples</div>
+    <div class="analogia-texto">
+      Imagine que você está perdido numa cidade e quer chegar à estação de trem. Você não sabe o caminho exato, mas olha ao redor e pensa: <em>"Estou num beco sem saída com só 2 ruas disponíveis. Meu amigo está numa praça aberta com 8 ruas."</em>
+      <br><br>
+      Você conclui: <strong>seu amigo está em vantagem</strong> — ele tem muito mais opções do que você. No Isolation é a mesma coisa: quem tem mais movimentos disponíveis está em melhor posição, porque o objetivo é não ficar preso.
+      <br><br>
+      A heurística <strong>não prevê o futuro</strong> — ela tira uma foto do tabuleiro agora e diz um número: <em>"quanto maior, melhor para a IA"</em>.
+    </div>
+  </div>
+
+  <div class="exemplo">
+    <div class="exemplo-label">Exemplo real — calculando o score de dois estados</div>
+
+    <div class="flex gap-24 flex-wrap mt16">
+      <!-- Estado A -->
+      <div style="flex:1;min-width:220px;">
+        <div style="font-size:12px;color:var(--green);margin-bottom:8px;font-weight:700;">Estado A — IA em vantagem</div>
+        <div class="board-mini">
+          <div class="bm"></div><div class="bm"></div><div class="bm blk"></div><div class="bm"></div><div class="bm blk"></div><div class="bm"></div><div class="bm"></div>
+          <div class="bm mv">●</div><div class="bm mv">●</div><div class="bm mv">●</div><div class="bm"></div><div class="bm blk"></div><div class="bm"></div><div class="bm"></div>
+          <div class="bm mv">●</div><div class="bm p1">A</div><div class="bm mv">●</div><div class="bm blk"></div><div class="bm"></div><div class="bm"></div><div class="bm"></div>
+          <div class="bm mv">●</div><div class="bm mv">●</div><div class="bm mv">●</div><div class="bm"></div><div class="bm blk"></div><div class="bm"></div><div class="bm"></div>
+          <div class="bm"></div><div class="bm"></div><div class="bm blk"></div><div class="bm blk"></div><div class="bm p2">B</div><div class="bm blk"></div><div class="bm"></div>
+          <div class="bm"></div><div class="bm"></div><div class="bm"></div><div class="bm blk"></div><div class="bm blk"></div><div class="bm blk"></div><div class="bm"></div>
+          <div class="bm"></div><div class="bm"></div><div class="bm"></div><div class="bm"></div><div class="bm"></div><div class="bm"></div><div class="bm"></div>
+        </div>
+        <div style="background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.25);border-radius:6px;padding:10px;margin-top:8px;font-size:12px;">
+          <div>A (IA): <strong style="color:var(--green)">8 movimentos</strong></div>
+          <div>B (oponente): <strong style="color:var(--red)">1 movimento</strong></div>
+          <div style="margin-top:6px;color:var(--text);">Score = 8 − 1 = <strong style="color:var(--green);font-size:16px;">+7</strong></div>
+          <div style="color:var(--text-muted);font-size:11px;margin-top:2px;">IA está quase vencendo</div>
+        </div>
+      </div>
+
+      <!-- Estado B -->
+      <div style="flex:1;min-width:220px;">
+        <div style="font-size:12px;color:var(--red);margin-bottom:8px;font-weight:700;">Estado B — IA em desvantagem</div>
+        <div class="board-mini">
+          <div class="bm"></div><div class="bm blk"></div><div class="bm blk"></div><div class="bm blk"></div><div class="bm"></div><div class="bm"></div><div class="bm"></div>
+          <div class="bm blk"></div><div class="bm blk"></div><div class="bm mv">●</div><div class="bm blk"></div><div class="bm"></div><div class="bm"></div><div class="bm"></div>
+          <div class="bm blk"></div><div class="bm p1">A</div><div class="bm blk"></div><div class="bm"></div><div class="bm mv">●</div><div class="bm mv">●</div><div class="bm mv">●</div>
+          <div class="bm blk"></div><div class="bm mv">●</div><div class="bm blk"></div><div class="bm"></div><div class="bm mv">●</div><div class="bm p2">B</div><div class="bm mv">●</div>
+          <div class="bm"></div><div class="bm blk"></div><div class="bm blk"></div><div class="bm"></div><div class="bm mv">●</div><div class="bm mv">●</div><div class="bm mv">●</div>
+          <div class="bm"></div><div class="bm"></div><div class="bm"></div><div class="bm"></div><div class="bm"></div><div class="bm"></div><div class="bm"></div>
+          <div class="bm"></div><div class="bm"></div><div class="bm"></div><div class="bm"></div><div class="bm"></div><div class="bm"></div><div class="bm"></div>
+        </div>
+        <div style="background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.25);border-radius:6px;padding:10px;margin-top:8px;font-size:12px;">
+          <div>A (IA): <strong style="color:var(--accent)">2 movimentos</strong></div>
+          <div>B (oponente): <strong style="color:var(--green)">8 movimentos</strong></div>
+          <div style="margin-top:6px;color:var(--text);">Score = 2 − 8 = <strong style="color:var(--red);font-size:16px;">−6</strong></div>
+          <div style="color:var(--text-muted);font-size:11px;margin-top:2px;">IA está encurralada</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="mt24">A heurística do nosso agente vai além de só contar movimentos imediatos. Ela usa <strong>quatro componentes</strong> combinados com pesos:</p>
+
+  <div class="card-grid col2 mt16">
+    <div class="card">
+      <div style="font-size:13px;font-weight:700;color:var(--accent);margin-bottom:8px;">1. Mobilidade diferencial</div>
+      <p style="font-size:14px;">Meus movimentos − movimentos do oponente. Quanto maior, melhor — significa que tenho mais espaço e liberdade.</p>
+    </div>
+    <div class="card">
+      <div style="font-size:13px;font-weight:700;color:var(--green);margin-bottom:8px;">2. Território (flood fill)</div>
+      <p style="font-size:14px;">Conta quantas células cada jogador consegue alcançar ao longo do jogo, não só agora. Quem "controla" mais área do tabuleiro está em vantagem.</p>
+    </div>
+    <div class="card">
+      <div style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:8px;">3. Centralidade (Chebyshev)</div>
+      <p style="font-size:14px;">Distância do meu peão ao centro do tabuleiro. Ficar no centro dá mais opções de movimento — ficar no canto te prende mais fácil.</p>
+    </div>
+    <div class="card">
+      <div style="font-size:13px;font-weight:700;color:var(--accent2);margin-bottom:8px;">4. Isolamento do oponente</div>
+      <p style="font-size:14px;">Distância de Chebyshev entre os dois peões. Quanto mais longe do oponente, mais isolado ele está — o que é bom para mim.</p>
+    </div>
+  </div>
+
+  <!-- CÓDIGO LINHA A LINHA -->
+  <div class="code-explain mt24">
+    <div class="code-explain-header">heuristic_agent.py — explicação linha a linha</div>
+
+    <div class="code-row sep">
+      <div class="code-left">    PESOS = {
+        <span class="st">'mobilidade'</span>:    <span class="nm">2.5</span>,
+        <span class="st">'territorio'</span>:    <span class="nm">1.2</span>,
+        <span class="st">'centralidade'</span>:  <span class="nm">0.8</span>,
+        <span class="st">'isolamento'</span>:    <span class="nm">1.5</span>,
+    }</div>
+      <div class="code-right">Cada componente tem um peso diferente. Mobilidade vale mais (2.5) porque ter mais movimentos é o mais importante no Isolation. Centralidade vale menos (0.8) pois é apenas um bônus secundário.</div>
+    </div>
+
+    <div class="code-row sep">
+      <div class="code-left">    <span class="kw">def</span> <span class="fn">avaliar</span>(self, estado):</div>
+      <div class="code-right">Recebe um tabuleiro e devolve um número: positivo = IA está bem, negativo = IA está mal, ±infinito = fim de jogo.</div>
+    </div>
+
+    <div class="code-row">
+      <div class="code-left">        eu       = estado.jogador_ativo
+        oponente = estado.jogador_inativo</div>
+      <div class="code-right">Identifica quem é a IA e quem é o oponente neste estado específico (pode alternar dependendo da profundidade).</div>
+    </div>
+
+    <div class="code-row destaque">
+      <div class="code-left">        movimentos_proprios  = <span class="fn">len</span>(estado.<span class="fn">get_acoes_legais</span>(eu))
+        movimentos_oponente  = <span class="fn">len</span>(estado.<span class="fn">get_acoes_legais</span>(oponente))</div>
+      <div class="code-right">Conta quantos movimentos cada jogador tem disponíveis <em>agora</em>. Se a IA tem 0, perdeu. Se o oponente tem 0, a IA ganhou.</div>
+    </div>
+
+    <div class="code-row verde">
+      <div class="code-left">        <span class="kw">if</span> movimentos_proprios  == <span class="nm">0</span>: <span class="kw">return</span> <span class="fn">float</span>(<span class="st">'-inf'</span>)
+        <span class="kw">if</span> movimentos_oponente  == <span class="nm">0</span>: <span class="kw">return</span> <span class="fn">float</span>(<span class="st">'+inf'</span>)</div>
+      <div class="code-right"><strong>Estados terminais:</strong> se a IA ficou sem movimentos, retorna o pior número possível (derrota). Se o oponente ficou sem movimentos, retorna o melhor número possível (vitória).</div>
+    </div>
+
+    <div class="code-row destaque">
+      <div class="code-left">        diferenca_mobilidade = movimentos_proprios - movimentos_oponente</div>
+      <div class="code-right">Componente 1: a diferença de movimentos. Se a IA tem 6 e o oponente tem 4, isso vale +2. Se a IA tem 3 e o oponente tem 7, vale −4 (ruim).</div>
+    </div>
+
+    <div class="code-row">
+      <div class="code-left">        territorio_proprio   = self.<span class="fn">_flood_fill</span>(estado, eu)
+        territorio_oponente  = self.<span class="fn">_flood_fill</span>(estado, oponente)
+        diferenca_territorio = territorio_proprio - territorio_oponente</div>
+      <div class="code-right">Componente 2: usa flood fill (uma inundação virtual a partir de cada peão) para contar quantas células cada um consegue alcançar. Quem alcança mais células "controla" mais território.</div>
+    </div>
+
+    <div class="code-row gold">
+      <div class="code-left">        centro_linha, centro_col = estado.tamanho // <span class="nm">2</span>, estado.tamanho // <span class="nm">2</span>
+        minha_linha, minha_col   = estado.<span class="fn">get_posicao</span>(eu)
+        distancia_ao_centro = self.<span class="fn">chebyshev</span>(
+            (minha_linha, minha_col), (centro_linha, centro_col)
+        )
+        bonus_centralidade  = -distancia_ao_centro</div>
+      <div class="code-right">Componente 3: calcula a distância de Chebyshev do meu peão ao centro do tabuleiro (3,3 num tabuleiro 7×7). Mais perto = melhor, por isso o sinal negativo: distância 0 dá bônus 0, distância 3 dá penalidade −3.</div>
+    </div>
+
+    <div class="code-row gold">
+      <div class="code-left">        isolamento_oponente = self.<span class="fn">chebyshev</span>(minha_posicao, posicao_oponente)</div>
+      <div class="code-right">Componente 4: distância de Chebyshev entre os dois peões. Quanto mais longe do oponente, mais isolado ele está. Útil especialmente no final do jogo quando o tabuleiro está cheio de bloqueios.</div>
+    </div>
+
+    <div class="code-row verde">
+      <div class="code-left">        <span class="kw">return</span> (
+            self.PESOS[<span class="st">'mobilidade'</span>]   * diferenca_mobilidade  +
+            self.PESOS[<span class="st">'territorio'</span>]   * diferenca_territorio  +
+            self.PESOS[<span class="st">'centralidade'</span>] * bonus_centralidade    +
+            self.PESOS[<span class="st">'isolamento'</span>]   * isolamento_oponente
+        )</div>
+      <div class="code-right"><strong>Score final:</strong> soma os quatro componentes cada um multiplicado pelo seu peso. Ex: mobilidade +2 × 2.5 = 5.0, território −1 × 1.2 = −1.2, centralidade −1 × 0.8 = −0.8, isolamento +3 × 1.5 = 4.5 → total = <strong>+7.5</strong>.</div>
+    </div>
+
+    <div class="code-row sep">
+      <div class="code-left">    <span class="kw">def</span> <span class="fn">chebyshev</span>(self, posicaoA, posicaoB):</div>
+      <div class="code-right">Função auxiliar que calcula a distância de Chebyshev: o mínimo de passos de rei para ir de A até B.</div>
+    </div>
+
+    <div class="code-row destaque">
+      <div class="code-left">        diferenca_linhas  = <span class="fn">abs</span>(posicaoA[<span class="nm">0</span>] - posicaoB[<span class="nm">0</span>])
+        diferenca_colunas = <span class="fn">abs</span>(posicaoA[<span class="nm">1</span>] - posicaoB[<span class="nm">1</span>])
+        <span class="kw">return</span> <span class="fn">max</span>(diferenca_linhas, diferenca_colunas)</div>
+      <div class="code-right">Calcula a diferença de linhas e colunas entre os dois pontos e retorna o maior dos dois. Ex: de (1,1) até (4,5) → linhas: |4−1|=3, colunas: |5−1|=4 → max(3,4) = <strong>4 passos de rei</strong>.</div>
+    </div>
+
+    <div class="code-row sep">
+      <div class="code-left">    <span class="kw">def</span> <span class="fn">_flood_fill</span>(self, estado, jogador):</div>
+      <div class="code-right">Conta as células que o jogador consegue alcançar partindo da sua posição atual, usando BFS (busca em largura).</div>
+    </div>
+
+    <div class="code-row">
+      <div class="code-left">        posicao_inicial       = estado.<span class="fn">get_posicao</span>(jogador)
+        celulas_visitadas     = {posicao_inicial}
+        celulas_para_explorar = [posicao_inicial]</div>
+      <div class="code-right">Começa na posição do jogador. <code>celulas_visitadas</code> evita contar a mesma célula duas vezes. <code>celulas_para_explorar</code> é a fila de próximas células a verificar.</div>
+    </div>
+
+    <div class="code-row destaque">
+      <div class="code-left">        <span class="kw">while</span> celulas_para_explorar:
+            linha_atual, col_atual = celulas_para_explorar.<span class="fn">pop</span>()</div>
+      <div class="code-right">Enquanto houver células para explorar, pega a próxima da fila e verifica todos os vizinhos ao redor (as 8 direções do rei).</div>
+    </div>
+
+    <div class="code-row">
+      <div class="code-left">            <span class="kw">for</span> delta_linha, delta_col <span class="kw">in</span> DIRECOES_REI:
+                nova_linha = linha_atual + delta_linha
+                nova_col   = col_atual   + delta_col
+                nova_pos   = (nova_linha, nova_col)
+                <span class="kw">if</span> nova_pos <span class="kw">not in</span> celulas_visitadas:
+                  <span class="kw">if</span> estado.<span class="fn">posicao_valida</span>(nova_pos):
+                    celulas_visitadas.<span class="fn">add</span>(nova_pos)
+                    celulas_para_explorar.<span class="fn">append</span>(nova_pos)</div>
+      <div class="code-right">Para cada uma das 8 direções, verifica a célula vizinha. Se ainda não foi visitada e está dentro do tabuleiro e livre, adiciona à lista para explorar — como uma inundação se espalhando pelo tabuleiro.</div>
+    </div>
+
+    <div class="code-row verde">
+      <div class="code-left">        <span class="kw">return</span> <span class="fn">len</span>(celulas_visitadas)</div>
+      <div class="code-right">Retorna o número total de células que o jogador consegue alcançar. Quanto maior, mais espaço ele tem no tabuleiro.</div>
+    </div>
+  </div>
+
+  <div class="good-box">
+    <strong>A heurística não é perfeita</strong> — ela é uma estimativa. Mas no Isolation ela funciona muito bem porque mobilidade e território são os fatores que realmente decidem o jogo: quem fica preso primeiro perde.
+  </div>
+</section>
+
+</div><!-- /page-wrapper -->
+
+<footer>
+  <strong>Isolation IA</strong> · Minimax · Poda Alfa-Beta · Função Heurística · Guia de Estudo
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,1630 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Isolation AI — Motor de Busca Adversarial</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-page:   #0f1117;
+      --bg-card:   #1a1d27;
+      --bg-card2:  #20243a;
+      --border:    #2e3250;
+      --text:      #e2e4f0;
+      --text-muted:#8890b0;
+      --accent:    #6c8fff;
+      --accent2:   #a78bfa;
+      --green:     #34d399;
+      --gold:      #fbbf24;
+      --red:       #f87171;
+      --radius:    12px;
+      --shadow:    0 4px 24px rgba(0,0,0,0.5);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg-page);
+      color: var(--text);
+      line-height: 1.65;
+      font-size: 16px;
+    }
+
+    .page-wrapper {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      text-align: center;
+      padding: 56px 24px 48px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 48px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 20% 50%, rgba(108,143,255,0.09) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 50%, rgba(167,139,250,0.09) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    .hero .badge {
+      display: inline-block;
+      background: rgba(108,143,255,0.15);
+      color: var(--accent);
+      border: 1px solid rgba(108,143,255,0.3);
+      border-radius: 999px;
+      padding: 4px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      margin-bottom: 20px;
+    }
+    .hero h1 {
+      font-size: clamp(28px, 4.5vw, 48px);
+      font-weight: 800;
+      line-height: 1.2;
+      background: linear-gradient(135deg, #e2e4f0 0%, var(--accent) 55%, var(--accent2) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 14px;
+    }
+    .hero p {
+      color: var(--text-muted);
+      font-size: 17px;
+      max-width: 640px;
+      margin: 0 auto 28px;
+    }
+    .hero .meta {
+      display: flex;
+      justify-content: center;
+      gap: 32px;
+      flex-wrap: wrap;
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+    .hero .meta span strong { color: var(--text); }
+
+    /* ── SUMÁRIO ── */
+    .sumario {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px 28px;
+      margin-bottom: 48px;
+    }
+    .sumario h2 {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+    .sumario ol {
+      list-style: none;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 8px 24px;
+      counter-reset: idx;
+    }
+    .sumario ol li { counter-increment: idx; }
+    .sumario ol li a {
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: color 0.2s;
+    }
+    .sumario ol li a::before {
+      content: counter(idx, decimal-leading-zero);
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 700;
+      min-width: 24px;
+    }
+    .sumario ol li a:hover { color: var(--accent2); }
+
+    /* ── SECTIONS ── */
+    section {
+      margin-bottom: 72px;
+      scroll-margin-top: 24px;
+    }
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+    .section-number {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 800;
+      color: #fff;
+      flex-shrink: 0;
+    }
+    .section-header h2 { font-size: 22px; font-weight: 700; }
+
+    p { color: var(--text-muted); margin-bottom: 16px; }
+    p:last-child { margin-bottom: 0; }
+    strong { color: var(--text); }
+
+    /* ── CARDS ── */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: var(--shadow);
+    }
+    .card-grid { display: grid; gap: 16px; }
+    .card-grid.col2 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+    .card-grid.col3 { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+    .card-grid.col4 { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+
+    /* ── PSEUDOCÓDIGO ── */
+    .pseudocode {
+      background: #111318;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      font-family: 'Courier New', monospace;
+      font-size: 13.5px;
+      line-height: 1.85;
+      overflow-x: auto;
+    }
+    .pseudocode .kw  { color: var(--accent2); font-weight: 700; }
+    .pseudocode .fn  { color: var(--accent); }
+    .pseudocode .cm  { color: #4a5570; font-style: italic; }
+    .pseudocode .nm  { color: var(--green); }
+    .pseudocode .st  { color: var(--gold); }
+    .pseudocode .indent1 { padding-left: 24px; }
+    .pseudocode .indent2 { padding-left: 48px; }
+    .pseudocode .indent3 { padding-left: 72px; }
+    .pseudocode .indent4 { padding-left: 96px; }
+    .pseudocode .line { display: block; }
+    .pseudocode .hl-line {
+      background: rgba(108,143,255,0.1);
+      border-left: 3px solid var(--accent);
+      padding-left: 8px;
+      margin-left: -8px;
+      border-radius: 0 4px 4px 0;
+    }
+    .pseudocode .prune-line {
+      background: rgba(248,113,113,0.12);
+      border-left: 3px solid var(--red);
+      padding-left: 8px;
+      margin-left: -8px;
+      border-radius: 0 4px 4px 0;
+    }
+
+    /* ── FÓRMULA ── */
+    .formula-box {
+      background: var(--bg-card2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px;
+      text-align: center;
+      margin: 24px 0;
+    }
+    .formula {
+      font-size: clamp(22px, 3.5vw, 36px);
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: 2px;
+      margin-bottom: 28px;
+      font-family: 'Courier New', monospace;
+    }
+    .formula .fa { color: var(--accent); }
+    .formula .fb { color: var(--green); }
+    .formula .fc { color: var(--gold); }
+    .formula .fd { color: var(--red); }
+    .formula-partes {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .formula-parte {
+      padding: 14px 20px;
+      border-radius: 10px;
+      min-width: 170px;
+      text-align: left;
+    }
+    .formula-parte.pa { background: rgba(108,143,255,0.1); border: 1px solid rgba(108,143,255,0.2); }
+    .formula-parte.pb { background: rgba(52,211,153,0.1);  border: 1px solid rgba(52,211,153,0.2); }
+    .formula-parte.pc { background: rgba(251,191,36,0.1);  border: 1px solid rgba(251,191,36,0.2); }
+    .formula-parte.pd { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.2); }
+    .formula-parte .label { font-family: 'Courier New', monospace; font-size: 20px; font-weight: 800; margin-bottom: 4px; }
+    .formula-parte.pa .label { color: var(--accent); }
+    .formula-parte.pb .label { color: var(--green); }
+    .formula-parte.pc .label { color: var(--gold); }
+    .formula-parte.pd .label { color: var(--red); }
+    .formula-parte .desc { font-size: 13px; color: var(--text-muted); line-height: 1.45; }
+
+    /* ── INFO / WARN BOXES ── */
+    .info-box {
+      background: rgba(108,143,255,0.07);
+      border-left: 3px solid var(--accent);
+      border-radius: 0 8px 8px 0;
+      padding: 14px 18px;
+      margin: 16px 0;
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+    .info-box strong { color: var(--accent); }
+    .warn-box {
+      background: rgba(248,113,113,0.07);
+      border-left: 3px solid var(--red);
+      border-radius: 0 8px 8px 0;
+      padding: 14px 18px;
+      margin: 16px 0;
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+    .warn-box strong { color: var(--red); }
+    .good-box {
+      background: rgba(52,211,153,0.07);
+      border-left: 3px solid var(--green);
+      border-radius: 0 8px 8px 0;
+      padding: 14px 18px;
+      margin: 16px 0;
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+    .good-box strong { color: var(--green); }
+
+    /* ── TAGS ── */
+    .tag {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .tag.azul   { background: rgba(108,143,255,0.12); color: var(--accent);  border: 1px solid rgba(108,143,255,0.3); }
+    .tag.verde  { background: rgba(52,211,153,0.12);  color: var(--green);   border: 1px solid rgba(52,211,153,0.3); }
+    .tag.roxo   { background: rgba(167,139,250,0.12); color: var(--accent2); border: 1px solid rgba(167,139,250,0.3); }
+    .tag.amarelo{ background: rgba(251,191,36,0.12);  color: var(--gold);    border: 1px solid rgba(251,191,36,0.3); }
+    .tag.vermelho{ background: rgba(248,113,113,0.12); color: var(--red);    border: 1px solid rgba(248,113,113,0.3); }
+
+    code {
+      font-family: 'Courier New', monospace;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 13px;
+      color: var(--accent);
+    }
+
+    /* ── TABULEIRO ── */
+    .board-wrap { display: flex; align-items: flex-start; gap: 32px; flex-wrap: wrap; }
+    .board-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 42px);
+      grid-template-rows: repeat(7, 42px);
+      gap: 3px;
+    }
+    .bc {
+      width: 42px; height: 42px;
+      border-radius: 5px;
+      background: rgba(100,180,60,0.1);
+      border: 1px solid rgba(100,180,60,0.18);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .bc.p1  { background: rgba(108,143,255,0.2); border-color: var(--accent); color: var(--accent); }
+    .bc.p2  { background: rgba(248,113,113,0.2); border-color: var(--red);    color: var(--red); }
+    .bc.blk { background: #1a1d27; border-color: #2e3250; }
+    .bc.mv  { background: rgba(52,211,153,0.1);  border-color: rgba(52,211,153,0.3); color: rgba(52,211,153,0.6); font-size:10px; }
+    .bc.mk  { background: rgba(251,191,36,0.1);  border-color: rgba(251,191,36,0.3); }
+
+    /* ── MOVIMENTO REI (3×3) ── */
+    .king-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 52px);
+      grid-template-rows: repeat(3, 52px);
+      gap: 4px;
+    }
+    .kg { width:52px;height:52px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700; }
+    .kg.center{ background: rgba(108,143,255,0.2); border:2px solid var(--accent); color:var(--accent); }
+    .kg.dest  { background: rgba(52,211,153,0.15); border:1px solid rgba(52,211,153,0.4); color:var(--green); }
+
+    /* ── GRADE CHEBYSHEV ── */
+    .cheb-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 38px);
+      grid-template-rows: repeat(7, 38px);
+      gap: 3px;
+    }
+    .cheb-cell {
+      width:38px; height:38px;
+      border-radius:5px;
+      display:flex; align-items:center; justify-content:center;
+      font-size:13px; font-weight:800;
+    }
+    .cheb-0 { background:rgba(108,143,255,0.35); border:2px solid var(--accent); color:var(--accent); }
+    .cheb-1 { background:rgba(52,211,153,0.2);   border:1px solid var(--green);  color:var(--green); }
+    .cheb-2 { background:rgba(251,191,36,0.15);  border:1px solid var(--gold);   color:var(--gold); }
+    .cheb-3 { background:rgba(248,113,113,0.1);  border:1px solid rgba(248,113,113,0.4); color:var(--red); }
+
+    /* ── ÁRVORE MINIMAX ── */
+    .tree-container { overflow-x: auto; }
+    .tree-svg-wrap {
+      background: #111318;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      overflow-x: auto;
+    }
+
+    /* ── HEURÍSTICA BARRAS ── */
+    .hrow { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+    .hlbl { width:120px; font-size:12px; color:var(--text-muted); text-align:right; flex-shrink:0; }
+    .htrk { flex:1; height:8px; background:var(--bg-card2); border-radius:4px; overflow:hidden; border:1px solid var(--border); }
+    .hfil { height:100%; border-radius:4px; }
+    .hval { width:52px; font-size:12px; font-weight:700; color:var(--text); }
+    .hwgt { width:52px; font-size:11px; color:var(--text-muted); font-family:'Courier New',monospace; }
+
+    /* ── TIMELINE ID ── */
+    .id-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border-radius: 8px;
+      background: var(--bg-card2);
+      border: 1px solid var(--border);
+      margin-bottom: 8px;
+    }
+    .id-depth {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      display: flex; align-items:center; justify-content:center;
+      font-size: 13px; font-weight: 800;
+      flex-shrink: 0;
+    }
+    .id-depth.done  { background:rgba(52,211,153,.15);  border:2px solid var(--green);  color:var(--green); }
+    .id-depth.tout  { background:rgba(248,113,113,.15); border:2px solid var(--red);    color:var(--red); }
+    .id-depth.idle  { background:rgba(255,255,255,.04); border:2px solid var(--border); color:var(--text-muted); }
+    .id-bar { flex:1; height:6px; background:var(--bg-page); border-radius:3px; overflow:hidden; border:1px solid var(--border); }
+    .id-fill { height:100%; border-radius:3px; }
+    .id-info { min-width:200px; font-size:12px; color:var(--text-muted); font-family:'Courier New',monospace; }
+
+    /* ── COMPARAÇÃO ── */
+    .compare-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    .compare-table th {
+      background: var(--bg-card2);
+      padding: 10px 16px;
+      text-align: left;
+      color: var(--text-muted);
+      font-size: 12px;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+    }
+    .compare-table td {
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+    .compare-table tr:last-child td { border-bottom: none; }
+    .compare-table td:first-child { color: var(--text); font-weight: 600; }
+    .compare-table td.good { color: var(--green); font-weight: 700; }
+    .compare-table td.bad  { color: var(--red);   }
+    .compare-table td.mid  { color: var(--gold);  }
+
+    /* ── UTILITÁRIOS ── */
+    .mt8  { margin-top: 8px; }
+    .mt16 { margin-top: 16px; }
+    .mt24 { margin-top: 24px; }
+    .mt32 { margin-top: 32px; }
+    .mb16 { margin-bottom: 16px; }
+    .text-center { text-align: center; }
+    .flex { display: flex; }
+    .gap-24 { gap: 24px; }
+    .flex-wrap { flex-wrap: wrap; }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 32px 24px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+    footer strong { color: var(--text); }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.4; transform: scale(0.75); }
+    }
+    .pulse-dot {
+      display: inline-block;
+      width: 10px; height: 10px;
+      background: var(--green);
+      border-radius: 50%;
+      margin-right: 8px;
+      animation: pulse 1.8s ease-in-out infinite;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body>
+<div class="page-wrapper">
+
+<!-- ═══════════ HERO ═══════════ -->
+<header class="hero">
+  <div class="badge">Inteligência Artificial — Busca Adversarial</div>
+  <h1>Isolation AI<br>Motor de Busca Adversarial</h1>
+  <p>
+    Um agente inteligente joga Isolation tomando decisões ótimas com
+    Minimax, Poda Alfa-Beta, Heurística multi-componente e Aprofundamento Iterativo.
+  </p>
+  <div class="meta">
+    <span><strong>Tabuleiro:</strong> 7 × 7 células</span>
+    <span><strong>Algoritmo:</strong> Minimax + Alfa-Beta</span>
+    <span><strong>Busca:</strong> Aprofundamento Iterativo</span>
+    <span><strong>Limite:</strong> 150 ms por jogada</span>
+  </div>
+</header>
+
+<!-- ═══════════ SUMÁRIO ═══════════ -->
+<nav class="sumario">
+  <h2>Índice</h2>
+  <ol>
+    <li><a href="#s1">O Jogo Isolation</a></li>
+    <li><a href="#s4">Algoritmo Minimax</a></li>
+    <li><a href="#s5">Poda Alfa-Beta</a></li>
+    <li><a href="#s6">Função Heurística</a></li>
+    <li><a href="#s9">Análise de Desempenho</a></li>
+  </ol>
+</nav>
+
+<!-- ═══════════════════════════════════════════════
+     1 — O JOGO ISOLATION
+════════════════════════════════════════════════ -->
+<section id="s1">
+  <div class="section-header">
+    <div class="section-number">1</div>
+    <h2>O Jogo Isolation</h2>
+  </div>
+
+  <p>
+    Isolation é um jogo de dois jogadores em um tabuleiro <strong>7 × 7</strong>.
+    Cada turno tem duas fases: <strong>mover o peão</strong> para uma célula válida e depois
+    <strong>bloquear permanentemente</strong> qualquer célula livre do tabuleiro. Quem ficar sem
+    movimentos disponíveis <strong>perde</strong>.
+  </p>
+
+  <div class="card-grid col3 mt24">
+    <div class="card text-center">
+      <div style="font-size:34px;margin-bottom:8px;">🎯</div>
+      <strong>Objetivo</strong>
+      <p style="font-size:13px;margin-top:6px;">
+        Forçar o oponente a ficar sem movimentos bloqueando o tabuleiro estrategicamente.
+      </p>
+    </div>
+    <div class="card text-center">
+      <div style="font-size:34px;margin-bottom:8px;">♟️</div>
+      <strong>Movimento</strong>
+      <p style="font-size:13px;margin-top:6px;">
+        Cada peão se move como um <strong>rei do xadrez</strong> — uma casa em qualquer das 8 direções (horizontal, vertical ou diagonal).
+      </p>
+    </div>
+    <div class="card text-center">
+      <div style="font-size:34px;margin-bottom:8px;">🚫</div>
+      <strong>Bloqueio</strong>
+      <p style="font-size:13px;margin-top:6px;">
+        Após mover, o jogador bloqueia qualquer célula livre. Células bloqueadas
+        são permanentes.
+      </p>
+    </div>
+  </div>
+
+  <!-- Tabuleiro demo -->
+  <div class="board-wrap mt32">
+    <div>
+      <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;">Estado intermediário — exemplo</div>
+      <div class="board-grid">
+        <!-- Linha 0 -->
+        <div class="bc"></div><div class="bc"></div><div class="bc"></div><div class="bc blk"></div><div class="bc"></div><div class="bc"></div><div class="bc"></div>
+        <!-- Linha 1 — movimentos do rei a partir de A: (1,1)(1,2)(1,3) -->
+        <div class="bc"></div><div class="bc mv">●</div><div class="bc mv">●</div><div class="bc mv">●</div><div class="bc blk"></div><div class="bc"></div><div class="bc"></div>
+        <!-- Linha 2 — movimento do rei: (2,1); (2,3) bloqueado -->
+        <div class="bc"></div><div class="bc mv">●</div><div class="bc p1">A</div><div class="bc blk"></div><div class="bc"></div><div class="bc"></div><div class="bc"></div>
+        <!-- Linha 3 — movimentos do rei: (3,1)(3,3); (3,2) bloqueado -->
+        <div class="bc"></div><div class="bc mv">●</div><div class="bc blk"></div><div class="bc mv">●</div><div class="bc"></div><div class="bc"></div><div class="bc"></div>
+        <!-- Linha 4 -->
+        <div class="bc"></div><div class="bc"></div><div class="bc"></div><div class="bc"></div><div class="bc blk"></div><div class="bc"></div><div class="bc"></div>
+        <!-- Linha 5 — jogador B -->
+        <div class="bc"></div><div class="bc"></div><div class="bc"></div><div class="bc p2">B</div><div class="bc"></div><div class="bc blk"></div><div class="bc"></div>
+        <!-- Linha 6 -->
+        <div class="bc"></div><div class="bc blk"></div><div class="bc"></div><div class="bc"></div><div class="bc"></div><div class="bc"></div><div class="bc"></div>
+      </div>
+      <p style="font-size:12px;color:var(--text-muted);margin-top:10px;text-align:center;">
+        <span style="color:var(--accent)">■ A</span> Jogador 1 &nbsp;|&nbsp;
+        <span style="color:var(--red)">■ B</span> Jogador 2 &nbsp;|&nbsp;
+        <span style="color:var(--green)">●</span> Movimentos válidos &nbsp;|&nbsp;
+        <span style="color:#2e3250">■</span> Bloqueado
+      </p>
+    </div>
+    <div style="flex:1;min-width:240px;">
+      <p>
+        A IA controla o <strong>Jogador A</strong> (azul). Neste estado,
+        A tem <strong>6 movimentos possíveis</strong> marcados em verde.
+        Após escolher para onde ir, bloqueará uma célula estratégica.
+      </p>
+      <div class="info-box">
+        <strong>Condição terminal:</strong> quando um jogador não possui
+        nenhum movimento legal disponível no início do seu turno, ele perde imediatamente.
+        A IA precisa antecipar isso vários turnos à frente.
+      </div>
+    </div>
+  </div>
+
+  <!-- Movimento do rei -->
+  <div class="mt32">
+    <div class="flex gap-24 flex-wrap">
+      <div>
+        <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;">Padrão de movimento — rei</div>
+        <div class="king-grid">
+          <div class="kg dest">↖</div><div class="kg dest">↑</div><div class="kg dest">↗</div>
+          <div class="kg dest">←</div><div class="kg center">♚</div><div class="kg dest">→</div>
+          <div class="kg dest">↙</div><div class="kg dest">↓</div><div class="kg dest">↘</div>
+        </div>
+        <p style="font-size:12px;color:var(--text-muted);margin-top:8px;text-align:center;">8 destinos possíveis (ignorando bordas e bloqueios)</p>
+      </div>
+      <div style="flex:1;min-width:240px;">
+        <p>
+          O peão se move como um <strong>rei do xadrez</strong>: uma casa em qualquer
+          das 8 direções — horizontal, vertical ou diagonal.
+          Células bloqueadas nas adjacências simplesmente não são destinos válidos.
+        </p>
+        <div class="pseudocode mt16" style="font-size:12px;">
+<span class="line"><span class="cm"># 8 direções do movimento de rei (1 casa em cada direção)</span></span>
+<span class="line">DIRECOES_REI = [</span>
+<span class="line">    (-<span class="nm">1</span>,-<span class="nm">1</span>), (-<span class="nm">1</span>, <span class="nm">0</span>), (-<span class="nm">1</span>,+<span class="nm">1</span>),  <span class="cm"># cima-esq, cima, cima-dir</span></span>
+<span class="line">    ( <span class="nm">0</span>,-<span class="nm">1</span>),            ( <span class="nm">0</span>,+<span class="nm">1</span>),  <span class="cm"># esquerda,      direita</span></span>
+<span class="line">    (+<span class="nm">1</span>,-<span class="nm">1</span>), (+<span class="nm">1</span>, <span class="nm">0</span>), (+<span class="nm">1</span>,+<span class="nm">1</span>),  <span class="cm"># baixo-esq, baixo, baixo-dir</span></span>
+<span class="line">]</span>
+        </div>
+        <div class="info-box mt16">
+          <strong>Diferença do xadrez:</strong> no Isolation o rei não pode pular células.
+          Se uma célula adjacente está bloqueada, simplesmente não é um destino válido.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="s2" style="display:none">
+  <div class="section-header">
+    <div class="section-number">2</div>
+    <h2>Representação do Estado</h2>
+  </div>
+
+  <p>
+    O estado do jogo é encapsulado em uma classe imutável <code>IsolationState</code>.
+    Cada chamada a <code>apply_action()</code> retorna um <strong>novo estado</strong> sem
+    modificar o anterior — essencial para que o Minimax explore múltiplos ramos sem conflito.
+  </p>
+
+  <div class="card-grid col2 mt24">
+    <div class="card">
+      <div style="font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-muted);margin-bottom:16px;">Atributos do estado</div>
+      <table class="compare-table">
+        <thead>
+          <tr><th>Campo</th><th>Tipo</th><th>Descrição</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>board</code></td><td style="color:var(--gold)">bool[7][7]</td><td>True = livre</td></tr>
+          <tr><td><code>player1_pos</code></td><td style="color:var(--gold)">(int,int)</td><td>Posição do jogador 1</td></tr>
+          <tr><td><code>player2_pos</code></td><td style="color:var(--gold)">(int,int)</td><td>Posição do jogador 2</td></tr>
+          <tr><td><code>active_player</code></td><td style="color:var(--gold)">int</td><td>1 ou 2</td></tr>
+          <tr><td><code>move_count</code></td><td style="color:var(--gold)">int</td><td>Número de turnos</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card">
+      <div style="font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-muted);margin-bottom:16px;">Transição de estado</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="background:rgba(108,143,255,0.08);border:1px solid rgba(108,143,255,0.2);border-radius:8px;padding:12px;font-size:13px;">
+          <div style="color:var(--accent);font-weight:700;margin-bottom:4px;">Estado S</div>
+          <div style="color:var(--text-muted);">board, pos_p1, pos_p2</div>
+        </div>
+        <div style="text-align:center;color:var(--text-muted);font-size:12px;">
+          ↓ <code>apply_action((mover_para, bloquear))</code>
+        </div>
+        <div style="background:rgba(52,211,153,0.08);border:1px solid rgba(52,211,153,0.2);border-radius:8px;padding:12px;font-size:13px;">
+          <div style="color:var(--green);font-weight:700;margin-bottom:4px;">Estado S'</div>
+          <div style="color:var(--text-muted);">novo board, nova pos, troca turno</div>
+        </div>
+        <div class="info-box" style="margin:0;">
+          <strong>Imutável:</strong> S nunca é alterado. O Minimax pode explorar S→S'→S'' sem sobrescrever estados anteriores.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="pseudocode mt24">
+<span class="line"><span class="kw">class</span> <span class="fn">IsolationState</span>:</span>
+<span class="line indent1"><span class="cm">"""Estado imutável do jogo Isolation — nunca modificado após criado"""</span></span>
+<span class="line"> </span>
+<span class="line indent1"><span class="kw">def</span> <span class="fn">__init__</span>(<span class="kw">self</span>):</span>
+<span class="line indent2"><span class="cm"># Tabuleiro 7×7: True = livre | False = bloqueado permanentemente</span></span>
+<span class="line indent2"><span class="kw">self</span>.tabuleiro = [[<span class="nm">True</span>] * <span class="nm">7</span> <span class="kw">for</span> _ <span class="kw">in</span> <span class="fn">range</span>(<span class="nm">7</span>)]</span>
+<span class="line indent2"><span class="kw">self</span>.posicao_jogador1 = <span class="nm">None</span>   <span class="cm"># (linha, coluna)</span></span>
+<span class="line indent2"><span class="kw">self</span>.posicao_jogador2 = <span class="nm">None</span></span>
+<span class="line indent2"><span class="kw">self</span>.jogador_ativo    = <span class="nm">1</span>      <span class="cm"># quem deve jogar agora: 1 ou 2</span></span>
+<span class="line"> </span>
+<span class="line indent1"><span class="kw">def</span> <span class="fn">aplicar_acao</span>(<span class="kw">self</span>, acao):</span>
+<span class="line indent2"><span class="cm">"""Retorna NOVO estado sem modificar o atual"""</span></span>
+<span class="line indent2">destino_do_peao, celula_a_bloquear = acao</span>
+<span class="line indent2">novo_estado = <span class="kw">self</span>.<span class="fn">_copiar</span>()</span>
+<span class="line"> </span>
+<span class="line indent2"><span class="kw">if</span> <span class="kw">self</span>.jogador_ativo == <span class="nm">1</span>:</span>
+<span class="line indent3">novo_estado.posicao_jogador1 = destino_do_peao</span>
+<span class="line indent2"><span class="kw">else</span>:</span>
+<span class="line indent3">novo_estado.posicao_jogador2 = destino_do_peao</span>
+<span class="line"> </span>
+<span class="line indent2">linha_bl, col_bl = celula_a_bloquear</span>
+<span class="line indent2">novo_estado.tabuleiro[linha_bl][col_bl] = <span class="nm">False</span>   <span class="cm"># bloqueia permanentemente</span></span>
+<span class="line indent2">novo_estado.jogador_ativo = <span class="nm">3</span> - <span class="kw">self</span>.jogador_ativo  <span class="cm"># alterna: 1→2→1→...</span></span>
+<span class="line indent2"><span class="kw">return</span> novo_estado</span>
+<span class="line"> </span>
+<span class="line indent1"><span class="kw">def</span> <span class="fn">jogo_terminou</span>(<span class="kw">self</span>):</span>
+<span class="line indent2"><span class="cm">"""Verdadeiro se o jogador ativo não tem nenhum movimento disponível"""</span></span>
+<span class="line indent2"><span class="kw">return</span> <span class="fn">len</span>(<span class="kw">self</span>.<span class="fn">get_acoes_legais</span>()) == <span class="nm">0</span></span>
+  </div>
+</section>
+
+<section id="s3" style="display:none">
+  <div class="section-header">
+    <div class="section-number">3</div>
+    <h2>Espaço de Ações</h2>
+  </div>
+
+  <p>
+    Uma ação em Isolation é sempre um par <code>(mover_para, bloquear)</code>.
+    O espaço de ações cresce com o número de células livres — criando uma
+    <strong>explosão combinatória</strong> que torna a busca exaustiva inviável.
+  </p>
+
+  <div class="formula-box mt24">
+    <div class="formula">
+      |<span class="fa">A</span>| = |<span class="fb">movimentos</span>| × |<span class="fc">células livres</span>|
+    </div>
+    <div class="formula-partes">
+      <div class="formula-parte pa">
+        <div class="label">|A|</div>
+        <div class="desc">Total de ações legais disponíveis para o jogador ativo.</div>
+      </div>
+      <div class="formula-parte pb">
+        <div class="label">movimentos</div>
+        <div class="desc">Destinos em L válidos (≤ 8). Reduz com bloqueios.</div>
+      </div>
+      <div class="formula-parte pc">
+        <div class="label">células livres</div>
+        <div class="desc">Qualquer célula não ocupada para bloquear (exceto destino).</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card-grid col4 mt16">
+    <div class="card text-center">
+      <div style="font-size:24px;font-weight:800;color:var(--accent);">≤ 8</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">movimentos legais</div>
+    </div>
+    <div class="card text-center">
+      <div style="font-size:24px;font-weight:800;color:var(--gold);">~40</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">células livres</div>
+    </div>
+    <div class="card text-center">
+      <div style="font-size:24px;font-weight:800;color:var(--green);">~320</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">ações por turno</div>
+    </div>
+    <div class="card text-center">
+      <div style="font-size:24px;font-weight:800;color:var(--red);">30<sup style="font-size:14px">5</sup></div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">nós sem poda (d=5)</div>
+    </div>
+  </div>
+
+  <div class="pseudocode mt24">
+<span class="line"><span class="kw">def</span> <span class="fn">get_acoes_legais</span>(<span class="kw">self</span>, jogador=<span class="nm">None</span>):</span>
+<span class="line indent1"><span class="cm">"""Gera todos os pares (destino_do_peao, celula_a_bloquear)"""</span></span>
+<span class="line indent1"><span class="kw">if</span> jogador <span class="kw">is</span> <span class="nm">None</span>:</span>
+<span class="line indent2">jogador = <span class="kw">self</span>.jogador_ativo</span>
+<span class="line"> </span>
+<span class="line indent1">posicao_atual = (<span class="kw">self</span>.posicao_jogador1 <span class="kw">if</span> jogador == <span class="nm">1</span></span>
+<span class="line indent2">                 <span class="kw">else</span> <span class="kw">self</span>.posicao_jogador2)</span>
+<span class="line"> </span>
+<span class="line indent1"><span class="cm"># Passo 1: destinos do rei (1 casa em qualquer das 8 direções)</span></span>
+<span class="line indent1">destinos_validos = []</span>
+<span class="line indent1"><span class="kw">for</span> delta_linha, delta_col <span class="kw">in</span> DIRECOES_REI:</span>
+<span class="line indent2">nova_linha = posicao_atual[<span class="nm">0</span>] + delta_linha</span>
+<span class="line indent2">nova_col   = posicao_atual[<span class="nm">1</span>] + delta_col</span>
+<span class="line indent2"><span class="kw">if</span> <span class="nm">0</span> <= nova_linha < <span class="nm">7</span> <span class="kw">and</span> <span class="nm">0</span> <= nova_col < <span class="nm">7</span>:</span>
+<span class="line indent3"><span class="kw">if</span> <span class="kw">self</span>.tabuleiro[nova_linha][nova_col]:  <span class="cm"># célula livre?</span></span>
+<span class="line indent3">  destinos_validos.append((nova_linha, nova_col))</span>
+<span class="line"> </span>
+<span class="line indent1"><span class="cm"># Passo 2: combinar cada destino com qualquer célula livre para bloquear</span></span>
+<span class="line indent1">celulas_livres = [(linha, col)</span>
+<span class="line indent2">                  <span class="kw">for</span> linha <span class="kw">in</span> <span class="fn">range</span>(<span class="nm">7</span>)</span>
+<span class="line indent2">                  <span class="kw">for</span> col   <span class="kw">in</span> <span class="fn">range</span>(<span class="nm">7</span>)</span>
+<span class="line indent2">                  <span class="kw">if</span> <span class="kw">self</span>.tabuleiro[linha][col]]</span>
+<span class="line"> </span>
+<span class="line indent1"><span class="kw">return</span> [(destino, bloquear)</span>
+<span class="line indent2">         <span class="kw">for</span> destino  <span class="kw">in</span> destinos_validos</span>
+<span class="line indent2">         <span class="kw">for</span> bloquear <span class="kw">in</span> celulas_livres</span>
+<span class="line indent2">         <span class="kw">if</span>  bloquear != destino]   <span class="cm"># não pode bloquear onde acabou de ir</span></span>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     4 — MINIMAX
+════════════════════════════════════════════════ -->
+<section id="s4">
+  <div class="section-header">
+    <div class="section-number">4</div>
+    <h2>Algoritmo Minimax</h2>
+  </div>
+
+  <p>
+    O Minimax modela o jogo como uma busca em árvore adversarial. A IA (<strong>MAX</strong>)
+    tenta maximizar o valor da posição; o oponente (<strong>MIN</strong>) tenta minimizar.
+    Os valores sobem recursivamente das folhas até a raiz.
+  </p>
+
+  <div class="formula-box mt24">
+    <div class="formula" style="font-size:clamp(14px,2.5vw,22px);">
+      <span class="fa">MAX</span>: valor = <span class="fb">max</span>(filhos) &nbsp;|&nbsp;
+      <span class="fc">MIN</span>: valor = <span class="fd">min</span>(filhos)
+    </div>
+    <div class="formula-partes">
+      <div class="formula-parte pa">
+        <div class="label">Raiz</div>
+        <div class="desc">Nó MAX — a IA escolhe a ação com maior valor retornado.</div>
+      </div>
+      <div class="formula-parte pb">
+        <div class="label">Folha</div>
+        <div class="desc">Profundidade 0 ou estado terminal → <code>heuristic(estado)</code>.</div>
+      </div>
+      <div class="formula-parte pc">
+        <div class="label">Backprop</div>
+        <div class="desc">Valores sobem das folhas à raiz alternando MAX e MIN.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Árvore Minimax SVG -->
+  <div class="mt24">
+    <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px;">Exemplo — árvore de profundidade 2</div>
+    <div class="tree-svg-wrap">
+      <svg viewBox="0 0 580 300" style="width:100%;max-height:300px;" xmlns="http://www.w3.org/2000/svg">
+        <!-- Edges ramo direito (não escolhido) -->
+        <line x1="290" y1="52" x2="435" y2="148" stroke="#2e3250" stroke-width="1.8"/>
+        <line x1="435" y1="168" x2="355" y2="248" stroke="#2e3250" stroke-width="1.5"/>
+        <line x1="435" y1="168" x2="435" y2="248" stroke="#2e3250" stroke-width="1.5"/>
+        <line x1="435" y1="168" x2="515" y2="248" stroke="#2e3250" stroke-width="1.5"/>
+        <!-- Edges ramo esquerdo — caminho escolhido (verde) -->
+        <line x1="290" y1="52" x2="145" y2="148" stroke="#34d399" stroke-width="2.5"/>
+        <line x1="145" y1="168" x2="65"  y2="248" stroke="#34d399" stroke-width="2.5"/>
+        <line x1="145" y1="168" x2="145" y2="248" stroke="#2e3250" stroke-width="1.5"/>
+        <line x1="145" y1="168" x2="225" y2="248" stroke="#2e3250" stroke-width="1.5"/>
+
+        <!-- Root MAX — valor 3 = max(3, 2) -->
+        <circle cx="290" cy="40" r="28" fill="#111318" stroke="#fbbf24" stroke-width="2.5"/>
+        <text x="290" y="34" text-anchor="middle" fill="#fbbf24" font-size="9" font-family="Courier New" font-weight="700" letter-spacing="1">MAX</text>
+        <text x="290" y="52" text-anchor="middle" fill="#34d399" font-size="15" font-family="Courier New" font-weight="700">3</text>
+
+        <!-- MIN esquerdo — valor 3 = min(3,7,4) — caminho escolhido -->
+        <circle cx="145" cy="158" r="26" fill="#111318" stroke="#34d399" stroke-width="2.5"/>
+        <text x="145" y="152" text-anchor="middle" fill="#34d399" font-size="9" font-family="Courier New" font-weight="700" letter-spacing="1">MIN</text>
+        <text x="145" y="170" text-anchor="middle" fill="#34d399" font-size="14" font-family="Courier New" font-weight="700">3</text>
+
+        <!-- MIN direito — valor 2 = min(5,9,2) — não escolhido -->
+        <circle cx="435" cy="158" r="26" fill="#111318" stroke="#8890b0" stroke-width="2"/>
+        <text x="435" y="152" text-anchor="middle" fill="#8890b0" font-size="9" font-family="Courier New" font-weight="700" letter-spacing="1">MIN</text>
+        <text x="435" y="170" text-anchor="middle" fill="#e2e4f0" font-size="14" font-family="Courier New" font-weight="700">2</text>
+
+        <!-- Folhas ramo esquerdo -->
+        <circle cx="65"  cy="260" r="22" fill="#111318" stroke="#34d399" stroke-width="2"/>
+        <text x="65"  y="265" text-anchor="middle" fill="#34d399" font-size="14" font-family="Courier New" font-weight="700">3</text>
+
+        <circle cx="145" cy="260" r="22" fill="#111318" stroke="#6c8fff" stroke-width="1.5"/>
+        <text x="145" y="265" text-anchor="middle" fill="#e2e4f0" font-size="14" font-family="Courier New" font-weight="700">7</text>
+
+        <circle cx="225" cy="260" r="22" fill="#111318" stroke="#6c8fff" stroke-width="1.5"/>
+        <text x="225" y="265" text-anchor="middle" fill="#e2e4f0" font-size="14" font-family="Courier New" font-weight="700">4</text>
+
+        <!-- Folhas ramo direito -->
+        <circle cx="355" cy="260" r="22" fill="#111318" stroke="#6c8fff" stroke-width="1.5"/>
+        <text x="355" y="265" text-anchor="middle" fill="#e2e4f0" font-size="14" font-family="Courier New" font-weight="700">5</text>
+
+        <circle cx="435" cy="260" r="22" fill="#111318" stroke="#6c8fff" stroke-width="1.5"/>
+        <text x="435" y="265" text-anchor="middle" fill="#e2e4f0" font-size="14" font-family="Courier New" font-weight="700">9</text>
+
+        <circle cx="515" cy="260" r="22" fill="#111318" stroke="#6c8fff" stroke-width="1.5"/>
+        <text x="515" y="265" text-anchor="middle" fill="#e2e4f0" font-size="14" font-family="Courier New" font-weight="700">2</text>
+
+        <!-- Rótulos de nível -->
+        <text x="12" y="44"  fill="#4a5570" font-size="10" font-family="Courier New">d=0 MAX</text>
+        <text x="12" y="162" fill="#4a5570" font-size="10" font-family="Courier New">d=1 MIN</text>
+        <text x="12" y="264" fill="#4a5570" font-size="10" font-family="Courier New">d=2 folha</text>
+
+        <!-- Indicador de escolha — ramo esquerdo -->
+        <text x="196" y="50" fill="#34d399" font-size="11" font-family="Courier New">escolha →</text>
+      </svg>
+    </div>
+    <p style="font-size:12px;color:var(--text-muted);margin-top:8px;text-align:center;">
+      <span style="color:var(--gold)">■</span> Nó MAX &nbsp;|&nbsp;
+      <span style="color:#8890b0">■</span> Nó MIN &nbsp;|&nbsp;
+      <span style="color:var(--accent)">■</span> Folha &nbsp;|&nbsp;
+      <span style="color:var(--green)">―</span> Caminho escolhido · MIN(3,7,4)=<strong style="color:var(--green)">3</strong> · MIN(5,9,2)=<strong style="color:var(--green)">2</strong> · MAX(3,2)=<strong style="color:var(--green)">3</strong> → ramo esquerdo
+    </p>
+  </div>
+
+  <div class="pseudocode mt24">
+<span class="line"><span class="kw">class</span> <span class="fn">MinimaxAgent</span>:</span>
+<span class="line indent1"><span class="cm">"""Agente que usa Minimax para busca adversarial"""</span></span>
+<span class="line"> </span>
+<span class="line indent1"><span class="kw">def</span> <span class="fn">__init__</span>(<span class="kw">self</span>, profundidade_maxima=<span class="nm">3</span>):</span>
+<span class="line indent2"><span class="kw">self</span>.profundidade_maxima = profundidade_maxima</span>
+<span class="line indent2"><span class="kw">self</span>.INFINITO = <span class="fn">float</span>(<span class="st">'inf'</span>)</span>
+<span class="line"> </span>
+<span class="line indent1"><span class="kw">def</span> <span class="fn">escolher_acao</span>(<span class="kw">self</span>, estado_atual):</span>
+<span class="line indent2"><span class="cm">"""Retorna a melhor ação para o jogador ativo"""</span></span>
+<span class="line indent2">melhor_acao      = <span class="nm">None</span></span>
+<span class="line indent2">melhor_pontuacao = -<span class="kw">self</span>.INFINITO</span>
+<span class="line"> </span>
+<span class="line indent2"><span class="kw">for</span> acao <span class="kw">in</span> estado_atual.<span class="fn">get_acoes_legais</span>():</span>
+<span class="line indent3">proximo_estado = estado_atual.<span class="fn">aplicar_acao</span>(acao)</span>
+<span class="line indent3">pontuacao = <span class="kw">self</span>.<span class="fn">_minimax</span>(proximo_estado,</span>
+<span class="line indent3">                          <span class="kw">self</span>.profundidade_maxima - <span class="nm">1</span>,</span>
+<span class="line indent3">                          jogador_esta_maximizando=<span class="nm">False</span>)</span>
+<span class="line indent3"><span class="kw">if</span> pontuacao > melhor_pontuacao:</span>
+<span class="line indent4">melhor_pontuacao = pontuacao</span>
+<span class="line indent4">melhor_acao      = acao</span>
+<span class="line"> </span>
+<span class="line indent2"><span class="kw">return</span> melhor_acao</span>
+<span class="line"> </span>
+<span class="line indent1"><span class="kw">def</span> <span class="fn">_minimax</span>(<span class="kw">self</span>, estado, profundidade, jogador_esta_maximizando):</span>
+<span class="line indent2"><span class="cm">"""Busca Minimax recursiva"""</span></span>
+<span class="line"> </span>
+<span class="line indent2"><span class="cm"># Caso base: profundidade esgotada ou jogo acabou</span></span>
+<span class="line indent2"><span class="kw">if</span> profundidade == <span class="nm">0</span> <span class="kw">or</span> estado.<span class="fn">jogo_terminou</span>():</span>
+<span class="line indent3"><span class="kw">return</span> <span class="kw">self</span>.<span class="fn">avaliar</span>(estado)</span>
+<span class="line"> </span>
+<span class="line indent2">acoes_possiveis = estado.<span class="fn">get_acoes_legais</span>()</span>
+<span class="line"> </span>
+<span class="line indent2"><span class="kw">if</span> jogador_esta_maximizando:</span>
+<span class="line indent3"><span class="cm"># Nó MAX: quer o maior valor possível</span></span>
+<span class="line indent3">melhor_valor = -<span class="kw">self</span>.INFINITO</span>
+<span class="line indent3"><span class="kw">for</span> acao <span class="kw">in</span> acoes_possiveis:</span>
+<span class="line indent4">estado_filho    = estado.<span class="fn">aplicar_acao</span>(acao)</span>
+<span class="line indent4">pontuacao_filho = <span class="kw">self</span>.<span class="fn">_minimax</span>(estado_filho, profundidade-<span class="nm">1</span>, <span class="nm">False</span>)</span>
+<span class="line indent4">melhor_valor = <span class="fn">max</span>(melhor_valor, pontuacao_filho)</span>
+<span class="line indent3"><span class="kw">return</span> melhor_valor</span>
+<span class="line"> </span>
+<span class="line indent2"><span class="kw">else</span>:</span>
+<span class="line indent3"><span class="cm"># Nó MIN: quer o menor valor possível</span></span>
+<span class="line indent3">melhor_valor = <span class="kw">self</span>.INFINITO</span>
+<span class="line indent3"><span class="kw">for</span> acao <span class="kw">in</span> acoes_possiveis:</span>
+<span class="line indent4">estado_filho    = estado.<span class="fn">aplicar_acao</span>(acao)</span>
+<span class="line indent4">pontuacao_filho = <span class="kw">self</span>.<span class="fn">_minimax</span>(estado_filho, profundidade-<span class="nm">1</span>, <span class="nm">True</span>)</span>
+<span class="line indent4">melhor_valor = <span class="fn">min</span>(melhor_valor, pontuacao_filho)</span>
+<span class="line indent3"><span class="kw">return</span> melhor_valor</span>
+  </div>
+
+  <div class="warn-box mt16">
+    <strong>Limitação:</strong> sem otimização, o Minimax explora <em>todos</em> os ramos.
+    Para d=5 com branching factor 30: 30<sup>5</sup> ≈ <strong>24 milhões de nós</strong> — inviável nos 150ms disponíveis.
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     5 — PODA ALFA-BETA
+════════════════════════════════════════════════ -->
+<section id="s5">
+  <div class="section-header">
+    <div class="section-number">5</div>
+    <h2>Poda Alfa-Beta</h2>
+  </div>
+
+  <p>
+    A Poda Alfa-Beta elimina ramos da árvore que <strong>garantidamente não influenciam
+    a decisão final</strong>. Ela mantém dois valores durante a busca: <code>alpha</code>
+    (melhor garantido para MAX) e <code>beta</code> (melhor garantido para MIN).
+    Quando <code>beta ≤ alpha</code>, o ramo pode ser ignorado com segurança.
+  </p>
+
+  <div class="formula-box mt24">
+    <div class="formula" style="font-size:clamp(16px,2.5vw,26px);">
+      <span class="fd">β</span> ≤ <span class="fb">α</span> → <span class="fa">poda</span> (break)
+    </div>
+    <div class="formula-partes">
+      <div class="formula-parte pb">
+        <div class="label">α (alpha)</div>
+        <div class="desc">Melhor valor que MAX já <em>garantiu</em> em outro ramo. MIN nunca deixará abaixo disso.</div>
+      </div>
+      <div class="formula-parte pd">
+        <div class="label">β (beta)</div>
+        <div class="desc">Melhor valor que MIN já <em>garantiu</em>. MAX nunca conseguirá acima disso neste ramo.</div>
+      </div>
+      <div class="formula-parte pa">
+        <div class="label">Resultado</div>
+        <div class="desc">Complexidade cai de O(b<sup>d</sup>) para O(b<sup>d/2</sup>) — equivale a <strong>dobrar a profundidade</strong>.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Árvore Alpha-Beta SVG com poda -->
+  <div class="mt24">
+    <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px;">Exemplo — poda em ação: nó n23 é cortado</div>
+    <div class="tree-svg-wrap">
+      <svg viewBox="0 0 600 310" style="width:100%;max-height:310px;" xmlns="http://www.w3.org/2000/svg">
+        <!-- Edges n1 branch -->
+        <line x1="300" y1="52" x2="150" y2="148" stroke="#2e3250" stroke-width="1.8"/>
+        <line x1="150" y1="168" x2="70"  y2="248" stroke="#2e3250" stroke-width="1.5"/>
+        <line x1="150" y1="168" x2="150" y2="248" stroke="#2e3250" stroke-width="1.5"/>
+        <line x1="150" y1="168" x2="230" y2="248" stroke="#2e3250" stroke-width="1.5"/>
+        <!-- n2 branch — explored edges -->
+        <line x1="300" y1="52" x2="450" y2="148" stroke="#2e3250" stroke-width="1.8"/>
+        <line x1="450" y1="168" x2="370" y2="248" stroke="#2e3250" stroke-width="1.5"/>
+        <line x1="450" y1="168" x2="450" y2="248" stroke="#2e3250" stroke-width="1.5"/>
+        <!-- n23 — PRUNED edge red dashed -->
+        <line x1="450" y1="168" x2="530" y2="248" stroke="#f87171" stroke-width="1.8" stroke-dasharray="6 3"/>
+
+        <!-- Root MAX -->
+        <circle cx="300" cy="40" r="28" fill="#111318" stroke="#fbbf24" stroke-width="2.5"/>
+        <text x="300" y="34" text-anchor="middle" fill="#fbbf24" font-size="9" font-family="Courier New" font-weight="700" letter-spacing="1">MAX</text>
+        <text x="300" y="52" text-anchor="middle" fill="#e2e4f0" font-size="14" font-family="Courier New" font-weight="700">2</text>
+
+        <!-- Alpha label at root -->
+        <rect x="330" y="20" width="70" height="18" rx="3" fill="rgba(52,211,153,0.12)" stroke="rgba(52,211,153,0.3)"/>
+        <text x="365" y="32" text-anchor="middle" fill="#34d399" font-size="10" font-family="Courier New">α = 2</text>
+
+        <!-- MIN node 1 -->
+        <circle cx="150" cy="158" r="26" fill="#111318" stroke="#8890b0" stroke-width="2"/>
+        <text x="150" y="152" text-anchor="middle" fill="#8890b0" font-size="9" font-family="Courier New" font-weight="700" letter-spacing="1">MIN</text>
+        <text x="150" y="170" text-anchor="middle" fill="#e2e4f0" font-size="14" font-family="Courier New" font-weight="700">2</text>
+
+        <!-- MIN node 2 — with beta label -->
+        <circle cx="450" cy="158" r="26" fill="#111318" stroke="#8890b0" stroke-width="2"/>
+        <text x="450" y="152" text-anchor="middle" fill="#8890b0" font-size="9" font-family="Courier New" font-weight="700" letter-spacing="1">MIN</text>
+        <text x="450" y="170" text-anchor="middle" fill="#e2e4f0" font-size="14" font-family="Courier New" font-weight="700">1</text>
+        <!-- Beta label -->
+        <rect x="480" y="138" width="70" height="18" rx="3" fill="rgba(248,113,113,0.12)" stroke="rgba(248,113,113,0.3)"/>
+        <text x="515" y="150" text-anchor="middle" fill="#f87171" font-size="10" font-family="Courier New">β = 1</text>
+
+        <!-- Leaves n1 -->
+        <circle cx="70"  cy="260" r="22" fill="#111318" stroke="#6c8fff" stroke-width="1.5"/>
+        <text x="70"  y="265" text-anchor="middle" fill="#e2e4f0" font-size="14" font-family="Courier New" font-weight="700">3</text>
+        <circle cx="150" cy="260" r="22" fill="#111318" stroke="#6c8fff" stroke-width="1.5"/>
+        <text x="150" y="265" text-anchor="middle" fill="#e2e4f0" font-size="14" font-family="Courier New" font-weight="700">5</text>
+        <circle cx="230" cy="260" r="22" fill="#111318" stroke="#6c8fff" stroke-width="1.5"/>
+        <text x="230" y="265" text-anchor="middle" fill="#e2e4f0" font-size="14" font-family="Courier New" font-weight="700">2</text>
+
+        <!-- Leaves n2 -->
+        <circle cx="370" cy="260" r="22" fill="#111318" stroke="#6c8fff" stroke-width="1.5"/>
+        <text x="370" y="265" text-anchor="middle" fill="#e2e4f0" font-size="14" font-family="Courier New" font-weight="700">9</text>
+        <circle cx="450" cy="260" r="22" fill="#111318" stroke="#6c8fff" stroke-width="1.5"/>
+        <text x="450" y="265" text-anchor="middle" fill="#e2e4f0" font-size="14" font-family="Courier New" font-weight="700">1</text>
+
+        <!-- n23 PRUNED node -->
+        <circle cx="530" cy="260" r="22" fill="rgba(248,113,113,0.1)" stroke="#f87171" stroke-width="2" opacity="0.6"/>
+        <text x="530" y="258" text-anchor="middle" fill="#f87171" font-size="18" font-family="Courier New" font-weight="800">✗</text>
+        <text x="530" y="274" text-anchor="middle" fill="#f87171" font-size="10" font-family="Courier New">podado</text>
+
+        <!-- Prune label -->
+        <rect x="362" y="292" width="140" height="16" rx="3" fill="rgba(248,113,113,0.12)" stroke="rgba(248,113,113,0.3)"/>
+        <text x="432" y="303" text-anchor="middle" fill="#f87171" font-size="10" font-family="Courier New">β(1) ≤ α(2) → break!</text>
+
+        <!-- Level labels -->
+        <text x="6" y="44"  fill="#4a5570" font-size="10" font-family="Courier New">d=0 MAX</text>
+        <text x="6" y="162" fill="#4a5570" font-size="10" font-family="Courier New">d=1 MIN</text>
+        <text x="6" y="264" fill="#4a5570" font-size="10" font-family="Courier New">d=2 folha</text>
+      </svg>
+    </div>
+    <p style="font-size:12px;color:var(--text-muted);margin-top:8px;text-align:center;">
+      Após n1=2, root tem α=2. No ramo n2: ao encontrar valor 1, β=1 ≤ α=2 → <span style="color:var(--red)">✗ n23 podado sem avaliar</span>
+    </p>
+  </div>
+
+  <!-- Comparação Min/AB -->
+  <div class="card mt24">
+    <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-muted);margin-bottom:16px;">Minimax vs Alfa-Beta — impacto prático</div>
+    <table class="compare-table">
+      <thead><tr><th>Métrica</th><th>Minimax puro</th><th>Alfa-Beta</th></tr></thead>
+      <tbody>
+        <tr><td>Complexidade</td><td class="bad">O(b<sup>d</sup>)</td><td class="good">O(b<sup>d/2</sup>)</td></tr>
+        <tr><td>Nós (d=5, b=30)</td><td class="bad">~24 milhões</td><td class="good">~4.900</td></tr>
+        <tr><td>Profundidade efetiva</td><td class="bad">d=3 em 150ms</td><td class="good">d=5~6 em 150ms</td></tr>
+        <tr><td>Decisão</td><td class="mid">Igual</td><td class="good">Igual (garantido)</td></tr>
+        <tr><td>Memória</td><td class="mid">O(d)</td><td class="good">O(d) — igual</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="pseudocode mt24">
+<span class="line"><span class="kw">class</span> <span class="fn">AlphaBetaAgent</span>:</span>
+<span class="line indent1"><span class="cm">"""Minimax com Poda Alfa-Beta — O(b^(d/2))"""</span></span>
+<span class="line"> </span>
+<span class="line indent1"><span class="kw">def</span> <span class="fn">escolher_acao</span>(<span class="kw">self</span>, estado_atual):</span>
+<span class="line indent2">melhor_acao = <span class="nm">None</span></span>
+<span class="line indent2">alfa = -<span class="fn">float</span>(<span class="st">'inf'</span>)  <span class="cm"># melhor pontuação garantida para MAX até agora</span></span>
+<span class="line indent2">beta =  <span class="fn">float</span>(<span class="st">'inf'</span>)  <span class="cm"># melhor pontuação garantida para MIN até agora</span></span>
+<span class="line"> </span>
+<span class="line indent2"><span class="kw">for</span> acao <span class="kw">in</span> estado_atual.<span class="fn">get_acoes_legais</span>():</span>
+<span class="line indent3">proximo_estado = estado_atual.<span class="fn">aplicar_acao</span>(acao)</span>
+<span class="line indent3">pontuacao = <span class="kw">self</span>.<span class="fn">_alfa_beta</span>(proximo_estado,</span>
+<span class="line indent3">                            <span class="kw">self</span>.profundidade_maxima - <span class="nm">1</span>,</span>
+<span class="line indent3">                            alfa, beta, jogador_e_max=<span class="nm">False</span>)</span>
+<span class="line indent3"><span class="kw">if</span> pontuacao > alfa:</span>
+<span class="line indent4">alfa        = pontuacao</span>
+<span class="line indent4">melhor_acao = acao</span>
+<span class="line indent2"><span class="kw">return</span> melhor_acao</span>
+<span class="line"> </span>
+<span class="line indent1"><span class="kw">def</span> <span class="fn">_alfa_beta</span>(<span class="kw">self</span>, estado, profundidade, alfa, beta, jogador_e_max):</span>
+<span class="line indent2"><span class="kw">if</span> profundidade == <span class="nm">0</span> <span class="kw">or</span> estado.<span class="fn">jogo_terminou</span>():</span>
+<span class="line indent3"><span class="kw">return</span> <span class="kw">self</span>.<span class="fn">avaliar</span>(estado)</span>
+<span class="line"> </span>
+<span class="line indent2"><span class="kw">if</span> jogador_e_max:</span>
+<span class="line indent3">melhor_valor = -<span class="fn">float</span>(<span class="st">'inf'</span>)</span>
+<span class="line indent3"><span class="kw">for</span> acao <span class="kw">in</span> estado.<span class="fn">get_acoes_legais</span>():</span>
+<span class="line indent4">estado_filho = estado.<span class="fn">aplicar_acao</span>(acao)</span>
+<span class="line indent4">melhor_valor = <span class="fn">max</span>(melhor_valor,</span>
+<span class="line indent4">    <span class="kw">self</span>.<span class="fn">_alfa_beta</span>(estado_filho, profundidade-<span class="nm">1</span>, alfa, beta, <span class="nm">False</span>))</span>
+<span class="line indent4">alfa = <span class="fn">max</span>(alfa, melhor_valor)</span>
+<span class="line indent4 prune-line"><span class="kw">if</span> beta <= alfa: <span class="kw">break</span>   <span class="cm"># MIN nunca escolherá este ramo → Poda Beta!</span></span>
+<span class="line indent3"><span class="kw">return</span> melhor_valor</span>
+<span class="line"> </span>
+<span class="line indent2"><span class="kw">else</span>:</span>
+<span class="line indent3">melhor_valor = <span class="fn">float</span>(<span class="st">'inf'</span>)</span>
+<span class="line indent3"><span class="kw">for</span> acao <span class="kw">in</span> estado.<span class="fn">get_acoes_legais</span>():</span>
+<span class="line indent4">estado_filho = estado.<span class="fn">aplicar_acao</span>(acao)</span>
+<span class="line indent4">melhor_valor = <span class="fn">min</span>(melhor_valor,</span>
+<span class="line indent4">    <span class="kw">self</span>.<span class="fn">_alfa_beta</span>(estado_filho, profundidade-<span class="nm">1</span>, alfa, beta, <span class="nm">True</span>))</span>
+<span class="line indent4">beta = <span class="fn">min</span>(beta, melhor_valor)</span>
+<span class="line indent4 prune-line"><span class="kw">if</span> beta <= alfa: <span class="kw">break</span>   <span class="cm"># MAX nunca escolherá este ramo → Poda Alpha!</span></span>
+<span class="line indent3"><span class="kw">return</span> melhor_valor</span>
+  </div>
+
+  <div class="good-box mt16">
+    <strong>Resultado garantido:</strong> a Poda Alfa-Beta <em>sempre</em> retorna a mesma decisão
+    que o Minimax puro — nunca piora a jogada, apenas economiza tempo eliminando ramos irrelevantes.
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     6 — HEURÍSTICA
+════════════════════════════════════════════════ -->
+<section id="s6">
+  <div class="section-header">
+    <div class="section-number">6</div>
+    <h2>Função Heurística</h2>
+  </div>
+
+  <p>
+    Nas folhas da árvore (profundidade limite), em vez de jogar até o fim,
+    chamamos uma <strong>função heurística</strong> que estima a qualidade da posição.
+    A heurística combina cinco componentes ponderados.
+  </p>
+
+  <div class="formula-box mt24">
+    <div class="formula" style="font-size:clamp(13px,2vw,20px); letter-spacing:1px;">
+      <span class="fa">score</span> = w₁·<span class="fb">mob</span> + w₂·<span class="fc">opp</span> + w₃·<span class="fa">ter</span> + w₄·<span class="fb">ctr</span> + w₅·<span class="fc">iso</span>
+    </div>
+  </div>
+
+  <!-- Barras heurística -->
+  <!-- CHEBYSHEV DESTAQUE -->
+  <div class="card mt24" style="border-color:rgba(108,143,255,0.4);">
+    <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--accent);margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+      <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);"></span>
+      Distância de Chebyshev — métrica central da heurística
+    </div>
+    <div class="flex gap-24 flex-wrap">
+      <div>
+        <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px;">Distâncias a partir do centro (P)</div>
+        <div class="cheb-grid">
+          <!-- Linha 0 -->
+          <div class="cheb-cell cheb-3">3</div><div class="cheb-cell cheb-3">3</div><div class="cheb-cell cheb-3">3</div><div class="cheb-cell cheb-3">3</div><div class="cheb-cell cheb-3">3</div><div class="cheb-cell cheb-3">3</div><div class="cheb-cell cheb-3">3</div>
+          <!-- Linha 1 -->
+          <div class="cheb-cell cheb-3">3</div><div class="cheb-cell cheb-2">2</div><div class="cheb-cell cheb-2">2</div><div class="cheb-cell cheb-2">2</div><div class="cheb-cell cheb-2">2</div><div class="cheb-cell cheb-2">2</div><div class="cheb-cell cheb-3">3</div>
+          <!-- Linha 2 -->
+          <div class="cheb-cell cheb-3">3</div><div class="cheb-cell cheb-2">2</div><div class="cheb-cell cheb-1">1</div><div class="cheb-cell cheb-1">1</div><div class="cheb-cell cheb-1">1</div><div class="cheb-cell cheb-2">2</div><div class="cheb-cell cheb-3">3</div>
+          <!-- Linha 3 — centro -->
+          <div class="cheb-cell cheb-3">3</div><div class="cheb-cell cheb-2">2</div><div class="cheb-cell cheb-1">1</div><div class="cheb-cell cheb-0">P</div><div class="cheb-cell cheb-1">1</div><div class="cheb-cell cheb-2">2</div><div class="cheb-cell cheb-3">3</div>
+          <!-- Linha 4 -->
+          <div class="cheb-cell cheb-3">3</div><div class="cheb-cell cheb-2">2</div><div class="cheb-cell cheb-1">1</div><div class="cheb-cell cheb-1">1</div><div class="cheb-cell cheb-1">1</div><div class="cheb-cell cheb-2">2</div><div class="cheb-cell cheb-3">3</div>
+          <!-- Linha 5 -->
+          <div class="cheb-cell cheb-3">3</div><div class="cheb-cell cheb-2">2</div><div class="cheb-cell cheb-2">2</div><div class="cheb-cell cheb-2">2</div><div class="cheb-cell cheb-2">2</div><div class="cheb-cell cheb-2">2</div><div class="cheb-cell cheb-3">3</div>
+          <!-- Linha 6 -->
+          <div class="cheb-cell cheb-3">3</div><div class="cheb-cell cheb-3">3</div><div class="cheb-cell cheb-3">3</div><div class="cheb-cell cheb-3">3</div><div class="cheb-cell cheb-3">3</div><div class="cheb-cell cheb-3">3</div><div class="cheb-cell cheb-3">3</div>
+        </div>
+        <p style="font-size:11px;color:var(--text-muted);margin-top:8px;text-align:center;">
+          <span style="color:var(--accent)">■ 0</span> = P &nbsp;
+          <span style="color:var(--green)">■ 1</span> = 1 passo &nbsp;
+          <span style="color:var(--gold)">■ 2</span> = 2 passos &nbsp;
+          <span style="color:var(--red)">■ 3</span> = 3 passos
+        </p>
+      </div>
+      <div style="flex:1;min-width:240px;">
+        <p>
+          A <strong>distância de Chebyshev</strong> calcula o mínimo de passos
+          que um rei precisa para ir de um ponto a outro.
+          É o <em>máximo</em> entre as diferenças de linha e coluna — muito mais
+          adequada ao movimento do rei do que a distância de Manhattan.
+        </p>
+        <div class="formula-box" style="padding:20px;margin:12px 0;">
+          <div class="formula" style="font-size:clamp(13px,1.8vw,18px);margin-bottom:12px;">
+            d = <span class="fa">max</span>( |Δlinha|, |Δcoluna| )
+          </div>
+          <p style="font-size:12px;color:var(--text-muted);margin:0;">
+            Exemplo: de (1,1) até (4,5) →<br>
+            max( |4−1|, |5−1| ) = max(3, 4) = <strong style="color:var(--accent)">4 passos</strong>
+          </p>
+        </div>
+        <div class="info-box" style="margin:0;">
+          <strong>Usos na heurística:</strong> (1) <em>centralidade</em> — distância de Chebyshev do peão ao centro do tabuleiro; (2) <em>isolamento</em> — distância de Chebyshev entre os dois jogadores (quanto maior, mais isolado o oponente).
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="pseudocode mt24">
+<span class="line"><span class="kw">class</span> <span class="fn">HeuristicAgent</span>:</span>
+<span class="line"> </span>
+<span class="line indent1">PESOS = {</span>
+<span class="line indent2"><span class="st">'mobilidade'</span>:    <span class="nm">2.5</span>,  <span class="cm"># meus movimentos disponíveis menos os do oponente</span></span>
+<span class="line indent2"><span class="st">'territorio'</span>:    <span class="nm">1.2</span>,  <span class="cm"># células que consigo alcançar vs células do oponente</span></span>
+<span class="line indent2"><span class="st">'centralidade'</span>:  <span class="nm">0.8</span>,  <span class="cm"># quão central estou (Chebyshev ao centro)</span></span>
+<span class="line indent2"><span class="st">'isolamento'</span>:    <span class="nm">1.5</span>,  <span class="cm"># distância de Chebyshev entre os dois jogadores</span></span>
+<span class="line indent1">}</span>
+<span class="line"> </span>
+<span class="line indent1"><span class="kw">def</span> <span class="fn">avaliar</span>(<span class="kw">self</span>, estado):</span>
+<span class="line indent2"><span class="cm">"""Retorna pontuação — quanto maior, melhor para o jogador ativo"""</span></span>
+<span class="line indent2">eu       = estado.jogador_ativo</span>
+<span class="line indent2">oponente = estado.jogador_inativo</span>
+<span class="line"> </span>
+<span class="line indent2"><span class="cm"># Verificar estados terminais (vitória / derrota imediata)</span></span>
+<span class="line indent2">movimentos_proprios  = <span class="fn">len</span>(estado.<span class="fn">get_acoes_legais</span>(eu))</span>
+<span class="line indent2">movimentos_oponente  = <span class="fn">len</span>(estado.<span class="fn">get_acoes_legais</span>(oponente))</span>
+<span class="line indent2"><span class="kw">if</span> movimentos_proprios  == <span class="nm">0</span>: <span class="kw">return</span> <span class="fn">float</span>(<span class="st">'-inf'</span>)  <span class="cm"># derrota</span></span>
+<span class="line indent2"><span class="kw">if</span> movimentos_oponente  == <span class="nm">0</span>: <span class="kw">return</span> <span class="fn">float</span>(<span class="st">'+inf'</span>)  <span class="cm"># vitória</span></span>
+<span class="line"> </span>
+<span class="line indent2"><span class="cm"># Componente 1: diferença de mobilidade (meus mvs − mvs do oponente)</span></span>
+<span class="line indent2">diferenca_mobilidade = movimentos_proprios - movimentos_oponente</span>
+<span class="line"> </span>
+<span class="line indent2"><span class="cm"># Componente 2: diferença de território (flood fill)</span></span>
+<span class="line indent2">territorio_proprio   = <span class="kw">self</span>.<span class="fn">_flood_fill</span>(estado, eu)</span>
+<span class="line indent2">territorio_oponente  = <span class="kw">self</span>.<span class="fn">_flood_fill</span>(estado, oponente)</span>
+<span class="line indent2">diferenca_territorio = territorio_proprio - territorio_oponente</span>
+<span class="line"> </span>
+<span class="line indent2"><span class="cm"># Componente 3: centralidade via Chebyshev (mais perto do centro = melhor)</span></span>
+<span class="line indent2">centro_linha, centro_col = estado.tamanho // <span class="nm">2</span>, estado.tamanho // <span class="nm">2</span></span>
+<span class="line indent2">minha_linha, minha_col   = estado.<span class="fn">get_posicao</span>(eu)</span>
+<span class="line indent2">distancia_ao_centro = <span class="kw">self</span>.<span class="fn">chebyshev</span>(</span>
+<span class="line indent3">    (minha_linha, minha_col), (centro_linha, centro_col)</span>
+<span class="line indent2">)</span>
+<span class="line indent2">bonus_centralidade  = -distancia_ao_centro  <span class="cm"># negativo: perto = bom</span></span>
+<span class="line"> </span>
+<span class="line indent2"><span class="cm"># Componente 4: isolamento via Chebyshev (distância entre os dois jogadores)</span></span>
+<span class="line indent2">minha_posicao    = estado.<span class="fn">get_posicao</span>(eu)</span>
+<span class="line indent2">posicao_oponente = estado.<span class="fn">get_posicao</span>(oponente)</span>
+<span class="line indent2">isolamento_oponente = <span class="kw">self</span>.<span class="fn">chebyshev</span>(minha_posicao, posicao_oponente)</span>
+<span class="line"> </span>
+<span class="line indent2"><span class="kw">return</span> (</span>
+<span class="line indent3"><span class="kw">self</span>.PESOS[<span class="st">'mobilidade'</span>]   * diferenca_mobilidade  +</span>
+<span class="line indent3"><span class="kw">self</span>.PESOS[<span class="st">'territorio'</span>]   * diferenca_territorio  +</span>
+<span class="line indent3"><span class="kw">self</span>.PESOS[<span class="st">'centralidade'</span>] * bonus_centralidade    +</span>
+<span class="line indent3"><span class="kw">self</span>.PESOS[<span class="st">'isolamento'</span>]   * isolamento_oponente</span>
+<span class="line indent2">)</span>
+<span class="line"> </span>
+<span class="line indent1"><span class="kw">def</span> <span class="fn">chebyshev</span>(<span class="kw">self</span>, posicaoA, posicaoB):</span>
+<span class="line indent2"><span class="cm">"""Distância de Chebyshev = mínimo de passos do rei entre dois pontos"""</span></span>
+<span class="line indent2">diferenca_linhas  = <span class="fn">abs</span>(posicaoA[<span class="nm">0</span>] - posicaoB[<span class="nm">0</span>])</span>
+<span class="line indent2">diferenca_colunas = <span class="fn">abs</span>(posicaoA[<span class="nm">1</span>] - posicaoB[<span class="nm">1</span>])</span>
+<span class="line indent2"><span class="kw">return</span> <span class="fn">max</span>(diferenca_linhas, diferenca_colunas)</span>
+<span class="line"> </span>
+<span class="line indent1"><span class="kw">def</span> <span class="fn">_flood_fill</span>(<span class="kw">self</span>, estado, jogador):</span>
+<span class="line indent2"><span class="cm">"""Conta células que o jogador consegue alcançar (BFS com movimentos de rei)"""</span></span>
+<span class="line indent2">posicao_inicial       = estado.<span class="fn">get_posicao</span>(jogador)</span>
+<span class="line indent2">celulas_visitadas     = {posicao_inicial}</span>
+<span class="line indent2">celulas_para_explorar = [posicao_inicial]</span>
+<span class="line"> </span>
+<span class="line indent2"><span class="kw">while</span> celulas_para_explorar:</span>
+<span class="line indent3">linha_atual, col_atual = celulas_para_explorar.<span class="fn">pop</span>()</span>
+<span class="line indent3"><span class="kw">for</span> delta_linha, delta_col <span class="kw">in</span> DIRECOES_REI:</span>
+<span class="line indent4">nova_linha = linha_atual + delta_linha</span>
+<span class="line indent4">nova_col   = col_atual   + delta_col</span>
+<span class="line indent4">nova_pos   = (nova_linha, nova_col)</span>
+<span class="line indent4"><span class="kw">if</span> nova_pos <span class="kw">not</span> <span class="kw">in</span> celulas_visitadas:</span>
+<span class="line indent4">  <span class="kw">if</span> estado.<span class="fn">posicao_valida</span>(nova_pos):  <span class="cm"># dentro do tabuleiro e livre?</span></span>
+<span class="line indent4">    celulas_visitadas.<span class="fn">add</span>(nova_pos)</span>
+<span class="line indent4">    celulas_para_explorar.<span class="fn">append</span>(nova_pos)</span>
+<span class="line"> </span>
+<span class="line indent2"><span class="kw">return</span> <span class="fn">len</span>(celulas_visitadas)  <span class="cm"># total de células alcançáveis</span></span>
+  </div>
+</section>
+
+<section id="s7" style="display:none">
+  <div class="section-header">
+    <div class="section-number">7</div>
+    <h2>Aprofundamento Iterativo</h2>
+  </div>
+
+  <p>
+    O Aprofundamento Iterativo (IDDFS) executa a busca Alfa-Beta em profundidades
+    crescentes — d=1, d=2, d=3, ... — até o <strong>tempo limite ser atingido</strong>.
+    Ao terminar o tempo, retorna o melhor resultado encontrado na última
+    <em>profundidade completa</em>.
+  </p>
+
+  <div class="card-grid col3 mt24">
+    <div class="card text-center">
+      <div style="font-size:32px;font-weight:800;color:var(--green);">✓</div>
+      <strong>Segurança</strong>
+      <p style="font-size:13px;margin-top:6px;">Sempre tem uma resposta válida — a da profundidade anterior — independente do timeout.</p>
+    </div>
+    <div class="card text-center">
+      <div style="font-size:32px;font-weight:800;color:var(--accent);">∞</div>
+      <strong>Adaptável</strong>
+      <p style="font-size:13px;margin-top:6px;">Aproveita ao máximo o tempo disponível, indo tão fundo quanto possível.</p>
+    </div>
+    <div class="card text-center">
+      <div style="font-size:32px;font-weight:800;color:var(--gold);">O(d)</div>
+      <strong>Memória</strong>
+      <p style="font-size:13px;margin-top:6px;">Usa apenas espaço linear — cada busca de profundidade descarta os nós anteriores.</p>
+    </div>
+  </div>
+
+  <div class="pseudocode mt24">
+<span class="line"><span class="kw">import</span> time</span>
+<span class="line"> </span>
+<span class="line"><span class="kw">class</span> <span class="fn">IterativeDeepeningAgent</span>:</span>
+<span class="line indent1"><span class="cm">"""Alpha-Beta com Aprofundamento Iterativo e controle de tempo"""</span></span>
+<span class="line"> </span>
+<span class="line indent1"><span class="kw">def</span> <span class="fn">__init__</span>(<span class="kw">self</span>, limite_tempo_ms=<span class="nm">150</span>):</span>
+<span class="line indent2"><span class="kw">self</span>.limite_tempo = limite_tempo_ms  <span class="cm"># tempo máximo em milissegundos</span></span>
+<span class="line"> </span>
+<span class="line indent1"><span class="kw">def</span> <span class="fn">escolher_acao</span>(<span class="kw">self</span>, estado_atual):</span>
+<span class="line indent2"><span class="cm">"""Retorna a melhor ação encontrada antes do tempo esgotar"""</span></span>
+<span class="line indent2">tempo_inicio       = time.<span class="fn">time</span>()</span>
+<span class="line indent2">melhor_movimento   = estado_atual.<span class="fn">get_acoes_legais</span>()[<span class="nm">0</span>]  <span class="cm"># fallback seguro</span></span>
+<span class="line indent2">profundidade_atual = <span class="nm">1</span>   <span class="cm"># começa raso e vai aprofundando</span></span>
+<span class="line"> </span>
+<span class="line indent2"><span class="kw">try</span>:</span>
+<span class="line indent3"><span class="kw">while</span> <span class="nm">True</span>:</span>
+<span class="line indent4">tempo_decorrido = (time.<span class="fn">time</span>() - tempo_inicio) * <span class="nm">1000</span></span>
+<span class="line indent4"><span class="kw">if</span> tempo_decorrido >= <span class="kw">self</span>.limite_tempo:</span>
+<span class="line indent4">  <span class="kw">break</span>   <span class="cm"># tempo esgotado: retorna o que já tem</span></span>
+<span class="line"> </span>
+<span class="line indent4">movimento_encontrado = <span class="kw">self</span>.<span class="fn">_buscar_profundidade</span>(</span>
+<span class="line indent4">    estado_atual, profundidade_atual, tempo_inicio</span>
+<span class="line indent4">)</span>
+<span class="line"> </span>
+<span class="line indent4">melhor_movimento    = movimento_encontrado  <span class="cm"># profundidade completa!</span></span>
+<span class="line indent4">profundidade_atual += <span class="nm">1</span>                    <span class="cm"># tenta uma profundidade a mais</span></span>
+<span class="line"> </span>
+<span class="line indent2"><span class="kw">except</span> <span class="fn">TimeoutError</span>:</span>
+<span class="line indent3"><span class="kw">pass</span>   <span class="cm"># retorna melhor_movimento da última profundidade COMPLETA</span></span>
+<span class="line"> </span>
+<span class="line indent2"><span class="kw">return</span> melhor_movimento</span>
+<span class="line"> </span>
+<span class="line indent1"><span class="kw">def</span> <span class="fn">_verificar_tempo</span>(<span class="kw">self</span>, tempo_inicio):</span>
+<span class="line indent2"><span class="cm">"""Lança TimeoutError se o limite de tempo foi ultrapassado"""</span></span>
+<span class="line indent2">tempo_decorrido = (time.<span class="fn">time</span>() - tempo_inicio) * <span class="nm">1000</span></span>
+<span class="line indent2"><span class="kw">if</span> tempo_decorrido >= <span class="kw">self</span>.limite_tempo:</span>
+<span class="line indent3"><span class="kw">raise</span> <span class="fn">TimeoutError</span>()</span>
+  </div>
+
+  <div class="info-box mt16">
+    <strong>Por que recomputar?</strong> A cada nova profundidade, o custo extra é pequeno
+    — as buscas anteriores representam apenas <code>1/(b-1)</code> do trabalho da última.
+    Para b=30 e d=5, recomputar d=1..4 acrescenta apenas ~3% de overhead.
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     8 — INTEGRAÇÃO DOS COMPONENTES
+════════════════════════════════════════════════ -->
+<section id="s8" style="display:none">
+  <div class="section-header">
+    <div class="section-number">8</div>
+    <h2>Integração dos Componentes</h2>
+  </div>
+
+  <p>
+    Todos os componentes formam uma única pipeline de decisão. A cada jogada,
+    o agente passa pelo ciclo completo: do <strong>estado atual</strong> até a
+    <strong>ação final</strong>, em até 150 ms.
+  </p>
+
+  <!-- Pipeline visual -->
+  <div class="card mt24" style="padding:32px;">
+    <div style="display:flex;flex-direction:column;gap:0;align-items:center;">
+
+      <!-- Bloco 1: Estado -->
+      <div style="background:rgba(108,143,255,0.1);border:1px solid rgba(108,143,255,0.3);border-radius:10px;padding:14px 28px;text-align:center;width:100%;max-width:480px;">
+        <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--accent);margin-bottom:4px;">Entrada</div>
+        <div style="font-weight:700;color:var(--text);font-size:15px;">IsolationState · get_legal_actions()</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">board 7×7 · posições · turno ativo</div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;align-items:center;padding:6px 0;">
+        <div style="width:2px;height:20px;background:var(--border);"></div>
+        <div style="font-size:10px;color:var(--text-muted);">inicia</div>
+        <div style="width:2px;height:20px;background:var(--border);"></div>
+      </div>
+
+      <!-- Bloco 2: ID -->
+      <div style="background:rgba(167,139,250,0.1);border:1px solid rgba(167,139,250,0.3);border-radius:10px;padding:14px 28px;text-align:center;width:100%;max-width:480px;">
+        <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--accent2);margin-bottom:4px;">Camada 1</div>
+        <div style="font-weight:700;color:var(--text);font-size:15px;">Aprofundamento Iterativo</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">d=1 → d=2 → d=3 → ... enquanto tempo &lt; 150ms</div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;align-items:center;padding:6px 0;">
+        <div style="width:2px;height:20px;background:var(--border);"></div>
+        <div style="font-size:10px;color:var(--text-muted);">chama para cada profundidade</div>
+        <div style="width:2px;height:20px;background:var(--border);"></div>
+      </div>
+
+      <!-- Bloco 3: Alpha-Beta -->
+      <div style="background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.3);border-radius:10px;padding:14px 28px;text-align:center;width:100%;max-width:480px;">
+        <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--red);margin-bottom:4px;">Camada 2</div>
+        <div style="font-weight:700;color:var(--text);font-size:15px;">Poda Alfa-Beta</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">expande árvore · poda ramos irrelevantes · propaga valores</div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;align-items:center;padding:6px 0;">
+        <div style="width:2px;height:20px;background:var(--border);"></div>
+        <div style="font-size:10px;color:var(--text-muted);">ao atingir folha</div>
+        <div style="width:2px;height:20px;background:var(--border);"></div>
+      </div>
+
+      <!-- Bloco 4: Heurística -->
+      <div style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.3);border-radius:10px;padding:14px 28px;text-align:center;width:100%;max-width:480px;">
+        <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:4px;">Camada 3</div>
+        <div style="font-weight:700;color:var(--text);font-size:15px;">Função Heurística</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">mobilidade · território · centro · isolamento → score</div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;align-items:center;padding:6px 0;">
+        <div style="width:2px;height:20px;background:var(--border);"></div>
+        <div style="font-size:10px;color:var(--text-muted);">propaga de volta</div>
+        <div style="width:2px;height:20px;background:var(--border);"></div>
+      </div>
+
+      <!-- Bloco 5: Saída -->
+      <div style="background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.35);border-radius:10px;padding:14px 28px;text-align:center;width:100%;max-width:480px;">
+        <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--green);margin-bottom:4px;">Saída</div>
+        <div style="font-weight:700;color:var(--text);font-size:15px;">Melhor Ação <span style="font-family:'Courier New',monospace;">(mover_para, bloquear)</span></div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">decisão ótima dentro do tempo disponível</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Pseudocódigo de integração -->
+  <div class="pseudocode mt24">
+<span class="line"><span class="kw">class</span> <span class="fn">IsolationAgent</span>:</span>
+<span class="line indent1"><span class="cm">"""Agente completo — todos os componentes integrados"""</span></span>
+<span class="line"> </span>
+<span class="line indent1"><span class="kw">def</span> <span class="fn">__init__</span>(<span class="kw">self</span>):</span>
+<span class="line indent2"><span class="kw">self</span>.heuristic  = <span class="fn">HeuristicAgent</span>()</span>
+<span class="line indent2"><span class="kw">self</span>.time_limit = <span class="nm">150</span>   <span class="cm"># ms por jogada</span></span>
+<span class="line"> </span>
+<span class="line indent1"><span class="kw">def</span> <span class="fn">choose_action</span>(<span class="kw">self</span>, game):</span>
+<span class="line indent2"><span class="cm">"""Pipeline completo: ID → Alpha-Beta → Heurística"""</span></span>
+<span class="line indent2">start     = time.<span class="fn">time</span>()</span>
+<span class="line indent2">best_move = game.<span class="fn">get_legal_actions</span>()[<span class="nm">0</span>]  <span class="cm"># fallback seguro</span></span>
+<span class="line indent2">depth     = <span class="nm">1</span></span>
+<span class="line"> </span>
+<span class="line indent2"><span class="kw">try</span>:</span>
+<span class="line indent3"><span class="kw">while</span> <span class="nm">True</span>:</span>
+<span class="line indent4"><span class="kw">self</span>.<span class="fn">_check_time</span>(start)           <span class="cm"># lança TimeoutError se expirou</span></span>
+<span class="line"> </span>
+<span class="line indent4">move = <span class="kw">self</span>.<span class="fn">_alpha_beta_root</span>(      <span class="cm"># Alpha-Beta nesta profundidade</span></span>
+<span class="line indent4">    game, depth, start</span>
+<span class="line indent4">)</span>
+<span class="line"> </span>
+<span class="line indent4">best_move = move                   <span class="cm"># salva — esta profundidade está completa</span></span>
+<span class="line indent4">depth += <span class="nm">1</span></span>
+<span class="line"> </span>
+<span class="line indent2"><span class="kw">except</span> <span class="fn">TimeoutError</span>:</span>
+<span class="line indent3"><span class="kw">pass</span>                               <span class="cm"># retorna best_move da última profundidade completa</span></span>
+<span class="line"> </span>
+<span class="line indent2"><span class="kw">return</span> best_move</span>
+<span class="line"> </span>
+<span class="line indent1"><span class="kw">def</span> <span class="fn">_eval_leaf</span>(<span class="kw">self</span>, state):</span>
+<span class="line indent2"><span class="cm">"""Ponto de encontro: Alpha-Beta chama Heurística nas folhas"""</span></span>
+<span class="line indent2"><span class="kw">return</span> <span class="kw">self</span>.heuristic.<span class="fn">score</span>(state)</span>
+  </div>
+
+  <div class="info-box mt16">
+    <strong>Separação de responsabilidades:</strong> o Aprofundamento Iterativo controla o <em>tempo</em>,
+    o Alfa-Beta controla a <em>busca</em>, e a Heurística controla a <em>avaliação</em>.
+    Cada camada pode ser melhorada independentemente sem quebrar as outras.
+  </div>
+</section>
+
+<!-- SEÇÃO 9 REMOVIDA -->
+<section id="s9" style="display:none;">
+  <div class="section-header">
+    <div class="section-number">9</div>
+    <h2>Análise de Desempenho</h2>
+  </div>
+
+  <p>
+    A combinação de Alpha-Beta + Aprofundamento Iterativo reduz drasticamente o espaço
+    de busca mantendo a qualidade da decisão. Os números abaixo comparam as estratégias
+    para <strong>b = 30, tempo limite = 150 ms</strong>.
+  </p>
+
+  <!-- Tabela de comparação -->
+  <div class="card mt24">
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>Estratégia</th>
+          <th>Profundidade efetiva</th>
+          <th>Nós avaliados</th>
+          <th>Tempo médio</th>
+          <th>Qualidade</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Minimax puro (d=3)</td>
+          <td class="bad">3</td>
+          <td class="bad">~27.000</td>
+          <td class="mid">140ms</td>
+          <td class="bad">Baixa</td>
+        </tr>
+        <tr>
+          <td>Alpha-Beta (d=4)</td>
+          <td class="mid">4</td>
+          <td class="mid">~900</td>
+          <td class="good">80ms</td>
+          <td class="mid">Média</td>
+        </tr>
+        <tr>
+          <td>Alpha-Beta (d=5)</td>
+          <td class="mid">5</td>
+          <td class="mid">~5.500</td>
+          <td class="good">130ms</td>
+          <td class="good">Alta</td>
+        </tr>
+        <tr>
+          <td><strong>ID + Alpha-Beta</strong></td>
+          <td class="good">5–6 adaptativo</td>
+          <td class="good">~6.000</td>
+          <td class="good">&lt;150ms sempre</td>
+          <td class="good"><strong>Máxima</strong></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Cards de impacto -->
+  <div class="card-grid col4 mt16">
+    <div class="card text-center">
+      <div style="font-size:28px;font-weight:800;color:var(--green);">99.5%</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">redução de nós<br>(Alpha-Beta vs Minimax)</div>
+    </div>
+    <div class="card text-center">
+      <div style="font-size:28px;font-weight:800;color:var(--accent);">2×</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">profundidade efetiva<br>vs Minimax puro</div>
+    </div>
+    <div class="card text-center">
+      <div style="font-size:28px;font-weight:800;color:var(--gold);">0</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">timeouts sem resposta<br>(ID garante fallback)</div>
+    </div>
+    <div class="card text-center">
+      <div style="font-size:28px;font-weight:800;color:var(--accent2);">5+</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">componentes<br>na heurística</div>
+    </div>
+  </div>
+
+  <!-- Complexidade teórica -->
+  <div class="card mt16">
+    <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-muted);margin-bottom:20px;">Complexidade teórica comparada</div>
+    <div style="display:flex;flex-direction:column;gap:14px;">
+
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <span style="font-size:13px;color:var(--text-muted);">Minimax puro</span>
+          <span class="tag vermelho">O(b<sup>d</sup>)</span>
+        </div>
+        <div style="height:8px;background:var(--bg-page);border-radius:4px;overflow:hidden;border:1px solid var(--border);">
+          <div style="width:100%;height:100%;background:var(--red);border-radius:4px;opacity:.6;"></div>
+        </div>
+      </div>
+
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <span style="font-size:13px;color:var(--text-muted);">Alpha-Beta (caso médio)</span>
+          <span class="tag amarelo">O(b<sup>3d/4</sup>)</span>
+        </div>
+        <div style="height:8px;background:var(--bg-page);border-radius:4px;overflow:hidden;border:1px solid var(--border);">
+          <div style="width:55%;height:100%;background:var(--gold);border-radius:4px;opacity:.7;"></div>
+        </div>
+      </div>
+
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <span style="font-size:13px;color:var(--text-muted);">Alpha-Beta (melhor caso — ordem perfeita)</span>
+          <span class="tag verde">O(b<sup>d/2</sup>)</span>
+        </div>
+        <div style="height:8px;background:var(--bg-page);border-radius:4px;overflow:hidden;border:1px solid var(--border);">
+          <div style="width:22%;height:100%;background:var(--green);border-radius:4px;"></div>
+        </div>
+      </div>
+
+    </div>
+    <div class="info-box mt16" style="margin-bottom:0;">
+      <strong>Ordem das ações importa:</strong> quanto melhor a ordem em que os ramos são
+      explorados (melhores primeiros), mais podas o Alfa-Beta realiza.
+      A heurística pode ser usada também para <em>ordenar ações</em> antes da busca,
+      aproximando o Alpha-Beta do caso ótimo O(b<sup>d/2</sup>).
+    </div>
+  </div>
+
+  <!-- Resumo final -->
+  <div style="background:linear-gradient(135deg,rgba(108,143,255,0.08),rgba(167,139,250,0.08));border:1px solid rgba(108,143,255,0.25);border-radius:var(--radius);padding:32px;text-align:center;margin-top:32px;">
+    <div style="font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--accent);margin-bottom:12px;">Conclusão</div>
+    <div style="font-size:18px;font-weight:700;color:var(--text);max-width:640px;margin:0 auto 16px;line-height:1.5;">
+      A sinergia entre Alpha-Beta, Heurística multi-componente e Aprofundamento Iterativo
+      permite ao agente jogar em <span style="color:var(--green)">nível competitivo</span>
+      dentro do limite de tempo rigoroso de 150 ms por jogada.
+    </div>
+    <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;">
+      <span class="tag azul">Minimax</span>
+      <span style="color:var(--text-muted);align-self:center;">+</span>
+      <span class="tag vermelho">Poda Alfa-Beta</span>
+      <span style="color:var(--text-muted);align-self:center;">+</span>
+      <span class="tag amarelo">Heurística</span>
+      <span style="color:var(--text-muted);align-self:center;">+</span>
+      <span class="tag roxo">Ap. Iterativo</span>
+      <span style="color:var(--text-muted);align-self:center;">=</span>
+      <span class="tag verde">Agente Eficiente</span>
+    </div>
+  </div>
+</section>
+
+</div><!-- /page-wrapper -->
+
+<footer>
+  <strong>Isolation AI</strong> · Minimax · Poda Alfa-Beta · Heurística · Aprofundamento Iterativo
+</footer>
+
+</body>
+</html>
